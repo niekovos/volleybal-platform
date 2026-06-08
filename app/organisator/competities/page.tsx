@@ -1,0 +1,244 @@
+'use client'
+import { useState } from 'react'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Modal } from '@/components/ui/Modal'
+import { Icon } from '@/components/ui/Icon'
+import { Monogram } from '@/components/ui/Monogram'
+import { Pill } from '@/components/ui/Pill'
+import { Field, Input, Select } from '@/components/ui/Field'
+import { useData } from '@/lib/data-context'
+
+const COMP_TYPES = { heren: 'Heren', dames: 'Dames', mix: 'Mix' }
+const COMP_FORMATS = { enkel: 'Enkele competitie', anderhalf: 'Anderhalve', dubbel: 'Dubbele' }
+const DAGEN_SEL = ['maandag','dinsdag','woensdag','donderdag','vrijdag'] as const
+
+function OrgTopbar({ title, sub, actions }: { title: string; sub?: string; actions?: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 28px', borderBottom: '1px solid var(--line)', background: 'var(--bg)', flexShrink: 0 }}>
+      <div>
+        <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, letterSpacing: -0.4, color: 'var(--ink)' }}>{title}</h1>
+        {sub && <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-3)', marginTop: 2 }}>{sub}</div>}
+      </div>
+      <div style={{ display: 'flex', gap: 10 }}>{actions}</div>
+    </div>
+  )
+}
+
+export default function CompetitiesPage() {
+  const { data, dispatch, competitiePoules, teamsByPoule } = useData()
+  const [selComp, setSelComp] = useState(Object.keys(data.competities)[0] || null)
+  const [selPoule, setSelPoule] = useState<string | null>(null)
+  const [compModal, setCompModal] = useState(false)
+  const [pouleModal, setPouleModal] = useState<{ compId: string } | null>(null)
+  const [teamModal, setTeamModal] = useState<{ pouleId?: string; teamId?: string } | null>(null)
+
+  const comp = selComp ? data.competities[selComp] : null
+  const compPoules = selComp ? competitiePoules(selComp) : []
+  const poule = selPoule ? data.poules[selPoule] : null
+  const teams = selPoule ? teamsByPoule(selPoule) : []
+
+  // Competitie modal state
+  const [cNaam, setCNaam] = useState(''); const [cType, setCType] = useState<'heren'|'dames'|'mix'>('mix')
+  const [cFormat, setCFormat] = useState<'enkel'|'anderhalf'|'dubbel'>('enkel')
+  const [cSeizoen, setCSeizoen] = useState('2025–2026'); const [cStart, setCStart] = useState('2025-09-01'); const [cEind, setCEind] = useState('2026-06-30')
+  const resetComp = () => { setCNaam(''); setCType('mix'); setCFormat('enkel'); setCSeizoen('2025–2026'); setCStart('2025-09-01'); setCEind('2026-06-30') }
+
+  // Poule modal state
+  const [pNaam, setPNaam] = useState(''); const [pNiveau, setPNiveau] = useState('')
+  const resetPoule = () => { setPNaam(''); setPNiveau('') }
+
+  // Team modal state
+  const [tNaam, setTNaam] = useState(''); const [tKort, setTKort] = useState(''); const [tPlaats, setTPlaats] = useState('')
+  const [tAdres, setTAdres] = useState(''); const [tPoule, setTPoule] = useState(selPoule || ''); const [tLoc, setTLoc] = useState(Object.keys(data.locaties)[0] || '')
+  const [tAvond, setTAvond] = useState<typeof DAGEN_SEL[number]>('dinsdag'); const [tAanv, setTAanv] = useState(''); const [tTel, setTTel] = useState(''); const [tMail, setTMail] = useState('')
+
+  const openTeamEdit = (teamId: string) => {
+    const t = data.teams[teamId]
+    if (!t) return
+    setTNaam(t.naam); setTKort(t.kort); setTPlaats(t.plaats); setTAdres(t.adres || '')
+    setTPoule(t.poule_id); setTLoc(t.locatie_id); setTAvond(t.avond as typeof DAGEN_SEL[number])
+    setTAanv(t.aanvoerder.naam); setTTel(t.aanvoerder.tel); setTMail(t.aanvoerder.mail)
+    setTeamModal({ teamId })
+  }
+  const openTeamNew = (pouleId: string) => {
+    setTNaam(''); setTKort(''); setTPlaats(''); setTAdres(''); setTPoule(pouleId); setTLoc(Object.keys(data.locaties)[0] || '')
+    setTAvond('dinsdag'); setTAanv(''); setTTel(''); setTMail('')
+    setTeamModal({ pouleId })
+  }
+
+  const saveTeam = () => {
+    const teamId = teamModal?.teamId
+    const payload = { naam: tNaam, kort: tKort.toUpperCase().slice(0,3), plaats: tPlaats, adres: tAdres, poule_id: tPoule, locatie_id: tLoc, avond: tAvond, aanvoerder: { naam: tAanv, tel: tTel, mail: tMail }, start: '20:00', blokkades: [] as never[] }
+    if (teamId) dispatch({ type: 'UPDATE_TEAM', teamId, data: payload, oldPouleId: data.teams[teamId]?.poule_id || tPoule })
+    else dispatch({ type: 'CREATE_TEAM', data: payload })
+    setTeamModal(null)
+  }
+
+  return (
+    <>
+      <OrgTopbar
+        title="Competities"
+        sub="Beheer competities, poules en teams"
+        actions={<>
+          <Button size="sm" variant="ghost" icon="plus" onClick={() => { resetComp(); setCompModal(true) }}>Competitie</Button>
+          <Button size="sm" icon="plus" onClick={() => selPoule ? openTeamNew(selPoule) : null}>Team</Button>
+        </>}
+      />
+      <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+        {/* Linkerkolom */}
+        <div style={{ width: 250, flexShrink: 0, borderRight: '1px solid var(--line)', padding: 16, overflow: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--ink-3)' }}>Competities</span>
+            <button onClick={() => { resetComp(); setCompModal(true) }} style={{ border: 'none', background: 'var(--primary-soft)', width: 28, height: 28, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="plus" size={17} color="var(--primary)" />
+            </button>
+          </div>
+          {Object.values(data.competities).map(c => {
+            const on = c.id === selComp
+            const cPoules = competitiePoules(c.id)
+            return (
+              <div key={c.id} style={{ marginBottom: 6 }}>
+                <button onClick={() => setSelComp(c.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '11px 12px', borderRadius: 'var(--radius)', border: `1px solid ${on ? 'var(--primary)' : 'transparent'}`, background: on ? 'var(--primary-soft)' : 'var(--surface-2)', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 14.5, fontWeight: 700, color: on ? 'var(--primary)' : 'var(--ink)', flex: 1 }}>{c.naam}</div>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--ink-3)', background: 'var(--surface)', padding: '2px 7px', borderRadius: 6 }}>{COMP_TYPES[c.type]}</span>
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{COMP_FORMATS[c.format]} · {c.seizoen}</div>
+                </button>
+                {on && (
+                  <div style={{ paddingLeft: 12, marginTop: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--ink-3)' }}>Poules</span>
+                      <button onClick={() => { resetPoule(); setPouleModal({ compId: c.id }) }} style={{ border: 'none', background: 'var(--primary-soft)', width: 24, height: 24, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon name="plus" size={14} color="var(--primary)" />
+                      </button>
+                    </div>
+                    {cPoules.map(p => (
+                      <button key={p.id} onClick={() => setSelPoule(p.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 3, borderRadius: 'var(--radius)', border: 'none', background: selPoule === p.id ? 'var(--surface)' : 'transparent', cursor: 'pointer', boxShadow: selPoule === p.id ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: selPoule === p.id ? 700 : 600, color: selPoule === p.id ? 'var(--primary)' : 'var(--ink-2)' }}>{p.naam}</div>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--ink-3)' }}>{teamsByPoule(p.id).length} teams</div>
+                      </button>
+                    ))}
+                    {!cPoules.length && <div style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--ink-3)', padding: '4px 10px' }}>Nog geen poules</div>}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Hoofdgedeelte */}
+        <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+          {poule ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div>
+                  <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, color: 'var(--ink)' }}>{comp?.naam} — {poule.naam}</h2>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-3)' }}>{poule.niveau} · {comp ? COMP_FORMATS[comp.format] : ''}</div>
+                </div>
+                <Button size="sm" icon="plus" onClick={() => openTeamNew(selPoule!)}>Team toevoegen</Button>
+              </div>
+              {teams.length > 0 ? (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 1.3fr 1fr 36px', gap: 12, padding: '11px 18px', borderBottom: '1px solid var(--line)', fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--ink-3)' }}>
+                    <div>Team</div><div>Aanvoerder</div><div>Locatie</div><div>Speelavond</div><div></div>
+                  </div>
+                  {teams.map((t, i) => (
+                    <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 1.3fr 1fr 36px', gap: 12, padding: '12px 18px', alignItems: 'center', borderBottom: i < teams.length - 1 ? '1px solid var(--line)' : 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Monogram kort={t.kort} hue={t.hue} size={32} />
+                        <div>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{t.naam}</span>
+                          {t.adres && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--ink-3)' }}>{t.adres}</div>}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--ink-2)' }}>{t.aanvoerder.naam}</div>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-2)' }}>{data.locaties[t.locatie_id]?.naam || '—'}</div>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-2)', textTransform: 'capitalize' }}>{t.avond}</div>
+                      <button onClick={() => openTeamEdit(t.id)} style={{ border: 'none', background: 'var(--surface-2)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon name="potlood" size={16} color="var(--ink-2)" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Card pad={40} style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink-3)', marginBottom: 14 }}>Nog geen teams in deze poule.</div>
+                  <Button size="sm" icon="plus" onClick={() => openTeamNew(selPoule!)}>Eerste team toevoegen</Button>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card pad={40} style={{ textAlign: 'center' }}>
+              <Icon name="trofee" size={30} color="var(--ink-3)" />
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink-3)', marginTop: 10 }}>Selecteer een competitie en poule.</div>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Competitie modal */}
+      <Modal open={compModal} onClose={() => setCompModal(false)} title="Nieuwe competitie" width={500}
+        footer={<><Button variant="ghost" onClick={() => setCompModal(false)}>Annuleren</Button><Button icon="check" disabled={!cNaam.trim()} onClick={() => { dispatch({ type: 'CREATE_COMPETITIE', data: { naam: cNaam, type: cType, format: cFormat, seizoen: cSeizoen, startDatum: cStart, eindDatum: cEind } }); setCompModal(false) }}>Aanmaken</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="Naam"><Input value={cNaam} onChange={e => setCNaam(e.target.value)} placeholder="Bijv. Heren Competitie" /></Field>
+          <Field label="Type"><div style={{ display: 'flex', gap: 8 }}>{(['heren','dames','mix'] as const).map(k => <Pill key={k} active={cType===k} onClick={() => setCType(k)}>{COMP_TYPES[k]}</Pill>)}</div></Field>
+          <Field label="Format" hint="Enkel: 1× tegen elk. Anderhalf: 1.5×. Dubbel: 2× tegen elk."><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{(['enkel','anderhalf','dubbel'] as const).map(k => <Pill key={k} active={cFormat===k} onClick={() => setCFormat(k)}>{COMP_FORMATS[k]}</Pill>)}</div></Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Begindatum" hint="Eerste wedstrijddag"><Input type="date" value={cStart} onChange={e => setCStart(e.target.value)} /></Field>
+            <Field label="Einddatum" hint="Laatste wedstrijddag"><Input type="date" value={cEind} onChange={e => setCEind(e.target.value)} /></Field>
+          </div>
+          <Field label="Seizoen"><Input value={cSeizoen} onChange={e => setCSeizoen(e.target.value)} placeholder="2025–2026" /></Field>
+        </div>
+      </Modal>
+
+      {/* Poule modal */}
+      <Modal open={!!pouleModal} onClose={() => setPouleModal(null)} title="Nieuwe poule" width={440}
+        footer={<><Button variant="ghost" onClick={() => setPouleModal(null)}>Annuleren</Button><Button icon="check" disabled={!pNaam.trim()} onClick={() => { if(pouleModal) dispatch({ type: 'CREATE_POULE', competitieId: pouleModal.compId, naam: pNaam, niveau: pNiveau }); setPouleModal(null) }}>Aanmaken</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="Naam"><Input value={pNaam} onChange={e => setPNaam(e.target.value)} placeholder="Bijv. Poule D" /></Field>
+          <Field label="Niveau / omschrijving"><Input value={pNiveau} onChange={e => setPNiveau(e.target.value)} placeholder="Niveau 4 · instap" /></Field>
+        </div>
+      </Modal>
+
+      {/* Team modal */}
+      <Modal open={!!teamModal} onClose={() => setTeamModal(null)} title={teamModal?.teamId ? 'Team bewerken' : 'Nieuw team'} width={560}
+        footer={<><Button variant="ghost" onClick={() => setTeamModal(null)}>Annuleren</Button><Button icon="check" disabled={!tNaam.trim() || !tKort.trim()} onClick={saveTeam}>{teamModal?.teamId ? 'Opslaan' : 'Aanmaken'}</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 14 }}>
+            <Field label="Teamnaam"><Input value={tNaam} onChange={e => setTNaam(e.target.value)} placeholder="Bijv. VV Assen Mix 4" /></Field>
+            <Field label="Afkorting"><Input value={tKort} onChange={e => setTKort(e.target.value.slice(0,3))} placeholder="VVA" /></Field>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Plaats"><Input value={tPlaats} onChange={e => setTPlaats(e.target.value)} /></Field>
+            <Field label="Adres"><Input value={tAdres} onChange={e => setTAdres(e.target.value)} /></Field>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Poule">
+              <Select value={tPoule} onChange={e => setTPoule(e.target.value)}>
+                {Object.values(data.poules).map(p => <option key={p.id} value={p.id}>{p.naam}</option>)}
+              </Select>
+            </Field>
+            <Field label="Thuislocatie">
+              <Select value={tLoc} onChange={e => setTLoc(e.target.value)}>
+                {Object.values(data.locaties).map(l => <option key={l.id} value={l.id}>{l.naam}</option>)}
+              </Select>
+            </Field>
+          </div>
+          <Field label="Speelavond">
+            <Select value={tAvond} onChange={e => setTAvond(e.target.value as typeof DAGEN_SEL[number])}>
+              {DAGEN_SEL.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase()+d.slice(1)}</option>)}
+            </Select>
+          </Field>
+          <div style={{ height: 1, background: 'var(--line)', margin: '4px 0' }} />
+          <Field label="Aanvoerder"><Input value={tAanv} onChange={e => setTAanv(e.target.value)} placeholder="Naam" /></Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Telefoon"><Input value={tTel} onChange={e => setTTel(e.target.value)} placeholder="06 …" /></Field>
+            <Field label="E-mail"><Input value={tMail} onChange={e => setTMail(e.target.value)} placeholder="naam@club.nl" /></Field>
+          </div>
+        </div>
+      </Modal>
+    </>
+  )
+}

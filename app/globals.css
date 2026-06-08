@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* ── Design tokens (light mode — blauw thema) ── */
+:root {
+  --bg:           oklch(0.985 0.004 95);
+  --surface:      #ffffff;
+  --surface-2:    oklch(0.965 0.005 95);
+  --ink:          oklch(0.24 0.012 60);
+  --ink-2:        oklch(0.47 0.012 60);
+  --ink-3:        oklch(0.63 0.01 60);
+  --line:         oklch(0.91 0.005 80);
+  --primary:      oklch(0.55 0.16 252);
+  --primary-ink:  #ffffff;
+  --primary-soft: oklch(0.95 0.035 252);
+  --warn:         oklch(0.72 0.15 65);
+  --warn-soft:    oklch(0.95 0.05 75);
+  --warn-ink:     oklch(0.5 0.13 50);
+  --positive:     oklch(0.58 0.13 155);
+
+  --font-display: 'Archivo', sans-serif;
+  --font-body:    'Hanken Grotesk', sans-serif;
+  --font-num:     'Space Mono', monospace;
+
+  --radius:    13px;
+  --radius-lg: 18px;
+}
+
+/* ── Donkere modus ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:           oklch(0.14 0.01 260);
+    --surface:      oklch(0.19 0.01 260);
+    --surface-2:    oklch(0.23 0.01 260);
+    --ink:          oklch(0.95 0.005 80);
+    --ink-2:        oklch(0.72 0.008 80);
+    --ink-3:        oklch(0.55 0.006 80);
+    --line:         oklch(0.29 0.008 260);
+    --primary-soft: oklch(0.25 0.05 252);
+    --warn-soft:    oklch(0.26 0.05 75);
+  }
+}
+
+/* ── Basis ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Animaties (sheets & modals) ── */
+@keyframes vbFade     { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vbSlideUp  { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes vbPop      { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* ── Scrollbar verbergen ── */
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
