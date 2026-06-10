@@ -15,7 +15,7 @@ import { VerplaatsSheet } from '@/components/captain/VerplaatsSheet'
 import { BeschikbaarSheet } from '@/components/captain/BeschikbaarSheet'
 import { ContactSheet } from '@/components/captain/ContactSheet'
 import { useData } from '@/lib/data-context'
-import { DEMO_CAPTAIN_TEAM } from '@/lib/mock-data'
+import { DEMO_CAPTAIN_TEAM } from '@/lib/demo'
 import { fmtDag } from '@/lib/utils'
 import type { Dag } from '@/lib/types'
 

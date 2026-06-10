@@ -2,7 +2,7 @@
 import { MobileHeader } from '@/components/ui/MobileHeader'
 import { StandenTabel } from '@/components/ui/StandenTabel'
 import { useData } from '@/lib/data-context'
-import { DEMO_CAPTAIN_TEAM } from '@/lib/mock-data'
+import { DEMO_CAPTAIN_TEAM } from '@/lib/demo'
 
 export default function AanvoerderStandenPage() {
   const { data } = useData()

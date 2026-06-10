@@ -9,7 +9,7 @@ import { Toast } from '@/components/ui/Toast'
 import { UitslagSheet } from '@/components/captain/UitslagSheet'
 import { VerplaatsSheet } from '@/components/captain/VerplaatsSheet'
 import { useData } from '@/lib/data-context'
-import { DEMO_CAPTAIN_TEAM } from '@/lib/mock-data'
+import { DEMO_CAPTAIN_TEAM } from '@/lib/demo'
 import type { Dag } from '@/lib/types'
 
 export default function AanvoerderProgrammaPage() {
