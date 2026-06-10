@@ -52,6 +52,7 @@ export type Poule = {
   niveau: string
   competitie_id: string
   format: 'enkel' | 'anderhalf' | 'dubbel'
+  maxSets: number
 }
 
 export type AanvoerderUitnodiging = {

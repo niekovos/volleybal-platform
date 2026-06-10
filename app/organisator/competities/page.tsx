@@ -78,20 +78,21 @@ export default function CompetitiesPage() {
   const [pNaam, setPNaam] = useState('')
   const [pNiveau, setPNiveau] = useState('')
   const [pFormat, setPFormat] = useState<'enkel'|'anderhalf'|'dubbel'>('enkel')
+  const [pMaxSets, setPMaxSets] = useState(4)
 
-  const openNewPoule = (compId: string) => { setEditPouleId(null); setPNaam(''); setPNiveau(''); setPFormat('enkel'); setPouleModal({ compId }) }
+  const openNewPoule = (compId: string) => { setEditPouleId(null); setPNaam(''); setPNiveau(''); setPFormat('enkel'); setPMaxSets(4); setPouleModal({ compId }) }
   const openEditPoule = (id: string, compId: string) => {
     const p = data.poules[id]
     if (!p) return
-    setEditPouleId(id); setPNaam(p.naam); setPNiveau(p.niveau); setPFormat(p.format)
+    setEditPouleId(id); setPNaam(p.naam); setPNiveau(p.niveau); setPFormat(p.format); setPMaxSets(p.maxSets ?? 4)
     setPouleModal({ compId })
   }
   const savePoule = () => {
     if (!pouleModal) return
     if (editPouleId) {
-      dispatch({ type: 'UPDATE_POULE', pouleId: editPouleId, naam: pNaam, niveau: pNiveau, format: pFormat })
+      dispatch({ type: 'UPDATE_POULE', pouleId: editPouleId, naam: pNaam, niveau: pNiveau, format: pFormat, maxSets: pMaxSets })
     } else {
-      dispatch({ type: 'CREATE_POULE', competitieId: pouleModal.compId, naam: pNaam, niveau: pNiveau, format: pFormat })
+      dispatch({ type: 'CREATE_POULE', competitieId: pouleModal.compId, naam: pNaam, niveau: pNiveau, format: pFormat, maxSets: pMaxSets })
     }
     setPouleModal(null)
   }
@@ -351,6 +352,13 @@ export default function CompetitiesPage() {
             <div style={{ display: 'flex', gap: 8 }}>
               {(['enkel','anderhalf','dubbel'] as const).map(k => (
                 <Pill key={k} active={pFormat===k} onClick={() => setPFormat(k)}>{COMP_FORMATS[k]}</Pill>
+              ))}
+            </div>
+          </Field>
+          <Field label="Aantal sets per wedstrijd" hint="Bij een even aantal sets wordt een tiebreak gespeeld bij gelijke stand">
+            <div style={{ display: 'flex', gap: 8 }}>
+              {([3, 4, 5] as const).map(n => (
+                <Pill key={n} active={pMaxSets === n} onClick={() => setPMaxSets(n)}>{n} sets</Pill>
               ))}
             </div>
           </Field>

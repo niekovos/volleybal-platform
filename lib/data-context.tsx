@@ -16,8 +16,8 @@ type Action =
   | { type: 'CREATE_TEAM'; data: Omit<AppData['teams'][string], 'id' | 'hue' | 'blokkades' | 'avond' | 'start'> & { poule_id: string | null } }
   | { type: 'UPDATE_TEAM'; teamId: string; data: Partial<AppData['teams'][string]>; oldPouleId: string | null }
   | { type: 'DELETE_TEAM'; teamId: string }
-  | { type: 'CREATE_POULE'; competitieId: string; naam: string; niveau: string; format: 'enkel' | 'anderhalf' | 'dubbel' }
-  | { type: 'UPDATE_POULE'; pouleId: string; naam: string; niveau: string; format: 'enkel' | 'anderhalf' | 'dubbel' }
+  | { type: 'CREATE_POULE'; competitieId: string; naam: string; niveau: string; format: 'enkel' | 'anderhalf' | 'dubbel'; maxSets: number }
+  | { type: 'UPDATE_POULE'; pouleId: string; naam: string; niveau: string; format: 'enkel' | 'anderhalf' | 'dubbel'; maxSets: number }
   | { type: 'DELETE_POULE'; pouleId: string }
   | { type: 'CREATE_COMPETITIE'; data: Omit<AppData['competities'][string], 'id'> }
   | { type: 'UPDATE_COMPETITIE'; competitieId: string; naam: string; soort: 'heren' | 'dames' | 'mix'; seizoen: string; startDatum: string; eindDatum: string }
@@ -171,13 +171,13 @@ async function executeAction(action: Action): Promise<void> {
       const id = 'P' + Date.now().toString().slice(-4)
       await sb.from('poules').insert({
         id, naam: action.naam, niveau: action.niveau || '',
-        competitie_id: action.competitieId, format: action.format,
+        competitie_id: action.competitieId, format: action.format, max_sets: action.maxSets,
       })
       break
     }
 
     case 'UPDATE_POULE':
-      await sb.from('poules').update({ naam: action.naam, niveau: action.niveau, format: action.format }).eq('id', action.pouleId)
+      await sb.from('poules').update({ naam: action.naam, niveau: action.niveau, format: action.format, max_sets: action.maxSets }).eq('id', action.pouleId)
       break
 
     case 'DELETE_POULE':

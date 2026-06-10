@@ -68,7 +68,7 @@ export default function AanvoerderProgrammaPage() {
           </List>
         </div>
       </div>
-      <UitslagSheet open={uitslagOpen} onClose={() => setUitslagOpen(false)} wedstrijden={mijn} teams={data.teams} teamId={teamId} defaultWedstrijdId={selectedWId} onSubmit={handleUitslag} />
+      <UitslagSheet open={uitslagOpen} onClose={() => setUitslagOpen(false)} wedstrijden={mijn} teams={data.teams} poules={data.poules} teamId={teamId} defaultWedstrijdId={selectedWId} onSubmit={handleUitslag} />
       <VerplaatsSheet open={verplaatsOpen} onClose={() => setVerplaatsOpen(false)} wedstrijden={mijn} alleWedstrijden={data.wedstrijden} teams={data.teams} teamId={teamId} onSubmit={handleVerplaats} />
       <Toast msg={toast} />
     </>

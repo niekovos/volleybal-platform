@@ -198,6 +198,7 @@ export default function AanvoerderPage() {
         onClose={() => setSheet(null)}
         wedstrijden={mijn}
         teams={data.teams}
+        poules={data.poules}
         teamId={teamId}
         defaultWedstrijdId={selectedWedstrijd}
         onSubmit={handleUitslag}

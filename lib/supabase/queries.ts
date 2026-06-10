@@ -72,6 +72,7 @@ export async function fetchAppData(): Promise<AppData> {
       niveau: r.niveau,
       competitie_id: r.competitie_id,
       format: (r.format ?? 'enkel') as 'enkel' | 'anderhalf' | 'dubbel',
+      maxSets: r.max_sets ?? 4,
     }
   }
 
