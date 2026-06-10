@@ -9,18 +9,10 @@ import { Card } from '@/components/ui/Card'
 
 type Mode = 'login' | 'signup'
 
-async function redirectAfterLogin(router: ReturnType<typeof useRouter>, returnUrl?: string | null) {
+function redirectByRol(router: ReturnType<typeof useRouter>, rol?: string | null, returnUrl?: string | null) {
   if (returnUrl) { router.replace(returnUrl); return }
-  const sb = createClient()
-  const { data: { user } } = await sb.auth.getUser()
-  if (!user) return
-  const { data: profiel } = await sb
-    .from('gebruiker_profielen')
-    .select('rol')
-    .eq('id', user.id)
-    .single()
-  if (profiel?.rol === 'organisator') router.replace('/organisator')
-  else if (profiel?.rol === 'aanvoerder') router.replace('/aanvoerder')
+  if (rol === 'organisator') router.replace('/organisator')
+  else if (rol === 'aanvoerder') router.replace('/aanvoerder')
   else router.replace('/standen')
 }
 
@@ -75,11 +67,21 @@ function LoginForm() {
         setLoading(false)
         return
       }
-      await sb.from('gebruiker_profielen').insert({
+      const { error: insertErr } = await sb.from('gebruiker_profielen').insert({
         id: user.id,
         naam: user.email?.split('@')[0] ?? 'Gebruiker',
         rol: 'speler',
       })
+      if (insertErr) {
+        // Row already exists but SELECT returned null (RLS). Retry the fetch.
+        const { data: retry } = await sb
+          .from('gebruiker_profielen')
+          .select('rol')
+          .eq('id', user.id)
+          .single()
+        redirectByRol(router, retry?.rol, returnUrl)
+        return
+      }
       router.replace(returnUrl ?? '/standen')
       return
     }
@@ -91,7 +93,7 @@ function LoginForm() {
       return
     }
 
-    await redirectAfterLogin(router, returnUrl)
+    redirectByRol(router, profiel.rol, returnUrl)
   }
 
   const handleSignup = async () => {
