@@ -49,7 +49,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertErr.message }, { status: 500 })
   }
 
-  const origin = new URL(request.url).origin
+  // Use the production URL (NEXT_PUBLIC_SITE_URL > Vercel production > request origin)
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : null) ||
+    new URL(request.url).origin
   const inviteUrl = `${origin}/uitnodiging/${invite.token}`
 
   // Try to send email via Supabase Admin invite (requires service role key)

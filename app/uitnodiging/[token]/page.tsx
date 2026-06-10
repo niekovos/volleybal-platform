@@ -70,19 +70,24 @@ export default function UitnodigingPage() {
 
   const handleAction = async (actie: 'accept' | 'decline') => {
     setStatus(actie === 'accept' ? 'accepting' : 'loading')
-    const res = await fetch(`/api/uitnodiging/${token}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ actie }),
-    })
-    const json = await res.json()
-    if (!res.ok) {
-      setErrorMsg(json.error ?? 'Er is iets misgegaan.')
+    try {
+      const res = await fetch(`/api/uitnodiging/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actie }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErrorMsg((json as { error?: string }).error ?? 'Er is iets misgegaan.')
+        setStatus('error')
+        return
+      }
+      setStatus(actie === 'accept' ? 'accepted' : 'declined')
+      setTimeout(() => router.replace((json as { redirect?: string }).redirect ?? '/standen'), 1500)
+    } catch {
+      setErrorMsg('Netwerkfout, probeer het opnieuw.')
       setStatus('error')
-      return
     }
-    setStatus(actie === 'accept' ? 'accepted' : 'declined')
-    setTimeout(() => router.replace(json.redirect ?? '/standen'), 1500)
   }
 
   const center: React.CSSProperties = {
