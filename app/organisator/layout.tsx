@@ -1,9 +1,10 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { DataProvider } from '@/lib/data-context'
 import { Icon } from '@/components/ui/Icon'
+import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
   { href: '/organisator',            label: 'Dashboard',  icon: 'dashboard' },
@@ -15,6 +16,13 @@ const NAV = [
 
 function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await createClient().auth.signOut()
+    router.replace('/login')
+  }
+
   return (
     <div style={{ width: 236, flexShrink: 0, background: 'var(--surface)', borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '20px 18px 16px', borderBottom: '1px solid var(--line)' }}>
@@ -50,11 +58,30 @@ function Sidebar() {
         })}
       </div>
       <div style={{ padding: 16, borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 999, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, color: 'var(--ink-2)', flexShrink: 0 }}>HW</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Henk Westerhof</div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--ink-3)' }}>Organisator</div>
+        <div style={{ width: 34, height: 34, borderRadius: 999, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon name="team" size={18} color="var(--ink-2)" />
         </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Organisator</div>
+        </div>
+        <button
+          onClick={handleLogout}
+          title="Uitloggen"
+          style={{
+            border: 'none',
+            background: 'var(--surface-2)',
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Icon name="uit" size={16} color="var(--ink-3)" />
+        </button>
       </div>
     </div>
   )

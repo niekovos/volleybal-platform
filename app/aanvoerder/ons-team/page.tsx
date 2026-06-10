@@ -13,6 +13,7 @@ import { BeschikbaarSheet } from '@/components/captain/BeschikbaarSheet'
 import { ContactSheet } from '@/components/captain/ContactSheet'
 import { useData } from '@/lib/data-context'
 import { DEMO_CAPTAIN_TEAM } from '@/lib/demo'
+import { createClient } from '@/lib/supabase/client'
 import { cap } from '@/lib/utils'
 import type { Dag } from '@/lib/types'
 
@@ -72,7 +73,17 @@ export default function OnsTeamPage() {
           </div>
         )}
 
-        <Button variant="ghost" full icon="uit" onClick={() => router.push('/login')}>Uitloggen</Button>
+        <Button
+          variant="ghost"
+          full
+          icon="uit"
+          onClick={async () => {
+            await createClient().auth.signOut()
+            router.replace('/login')
+          }}
+        >
+          Uitloggen
+        </Button>
       </div>
 
       <BeschikbaarSheet

@@ -23,8 +23,16 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Sessie vernieuwen zodat server-side code niet uitlogt
-  await supabase.auth.getUser()
+  // Sessie vernieuwen + beschermde routes bewaken
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { pathname } = request.nextUrl
+  const isProtected =
+    pathname.startsWith('/aanvoerder') || pathname.startsWith('/organisator')
+
+  if (isProtected && !user) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
   return supabaseResponse
 }
