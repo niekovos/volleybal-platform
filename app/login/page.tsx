@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Icon } from '@/components/ui/Icon'
 import { Button } from '@/components/ui/Button'
@@ -9,7 +9,8 @@ import { Card } from '@/components/ui/Card'
 
 type Mode = 'login' | 'signup'
 
-async function redirectByRole(router: ReturnType<typeof useRouter>) {
+async function redirectAfterLogin(router: ReturnType<typeof useRouter>, returnUrl?: string | null) {
+  if (returnUrl) { router.replace(returnUrl); return }
   const sb = createClient()
   const { data: { user } } = await sb.auth.getUser()
   if (!user) return
@@ -25,6 +26,8 @@ async function redirectByRole(router: ReturnType<typeof useRouter>) {
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams.get('return')
   const [mode, setMode] = useState<Mode>('login')
   const [adminMode, setAdminMode] = useState(false)
   const [naam, setNaam] = useState('')
@@ -77,7 +80,7 @@ export default function LoginPage() {
         naam: user.email?.split('@')[0] ?? 'Gebruiker',
         rol: 'speler',
       })
-      router.replace('/standen')
+      router.replace(returnUrl ?? '/standen')
       return
     }
 
@@ -88,9 +91,7 @@ export default function LoginPage() {
       return
     }
 
-    if (profiel.rol === 'organisator') router.replace('/organisator')
-    else if (profiel.rol === 'aanvoerder') router.replace('/aanvoerder')
-    else router.replace('/standen')
+    await redirectAfterLogin(router, returnUrl)
   }
 
   const handleSignup = async () => {
@@ -114,7 +115,7 @@ export default function LoginPage() {
         naam: naam.trim() || email.split('@')[0],
         rol: 'speler',
       })
-      router.replace('/standen')
+      router.replace(returnUrl ?? '/standen')
       return
     }
 

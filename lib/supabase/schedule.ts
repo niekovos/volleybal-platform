@@ -1,4 +1,4 @@
-import type { Competitie, Team } from '../types'
+import type { Competitie, Poule, Team } from '../types'
 import { createClient } from './client'
 
 const DAG_NR: Record<string, number> = {
@@ -57,6 +57,7 @@ function buildFixtures(teamIds: string[]): Array<[string, string]> {
 export async function generateSchema(
   pouleId: string,
   teams: Team[],
+  poule: Poule,
   competitie: Competitie,
 ): Promise<number> {
   if (teams.length < 2) return 0
@@ -76,9 +77,9 @@ export async function generateSchema(
 
   // enkel: 2x (1 thuis + 1 uit), anderhalf: 3x (2+1), dubbel: 4x (2+2)
   let fixtures: Array<[string, string]>
-  if (competitie.format === 'anderhalf') {
+  if (poule.format === 'anderhalf') {
     fixtures = [...base, ...rev, ...base]
-  } else if (competitie.format === 'dubbel') {
+  } else if (poule.format === 'dubbel') {
     fixtures = [...base, ...rev, ...base, ...rev]
   } else {
     // enkel (default)

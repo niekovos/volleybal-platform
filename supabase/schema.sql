@@ -34,6 +34,7 @@ create table poules (
   naam            text not null,
   niveau          text not null default '',
   competitie_id   text not null references competities(id) on delete cascade,
+  format          text not null default 'enkel' check (format in ('enkel','anderhalf','dubbel')),
   created_at      timestamptz default now()
 );
 
@@ -198,3 +199,30 @@ create policy "Organisator volledig" on standen      for all using (exists (sele
 
 -- Eigen profiel inzien
 create policy "Eigen profiel" on gebruiker_profielen for all using (id = auth.uid());
+
+-- ── Aanvoerder uitnodigingen & overdrachten ──
+create table aanvoerder_uitnodigingen (
+  id         uuid primary key default uuid_generate_v4(),
+  team_id    text not null references teams(id) on delete cascade,
+  email      text not null,
+  type       text not null default 'uitnodiging'
+               check (type in ('uitnodiging', 'overdracht')),
+  token      text not null unique default encode(gen_random_bytes(32), 'hex'),
+  van_id     uuid references auth.users(id),
+  status     text not null default 'open'
+               check (status in ('open', 'geaccepteerd', 'afgewezen')),
+  created_at timestamptz default now(),
+  expires_at timestamptz default (now() + interval '7 days')
+);
+
+alter table aanvoerder_uitnodigingen enable row level security;
+
+create policy "Publiek leesbaar" on aanvoerder_uitnodigingen for select using (true);
+create policy "Organisator volledig" on aanvoerder_uitnodigingen for all
+  using (exists (select 1 from gebruiker_profielen where id = auth.uid() and rol = 'organisator'));
+create policy "Aanvoerder overdracht aanmaken" on aanvoerder_uitnodigingen for insert
+  with check (
+    type = 'overdracht'
+    and team_id = (select team_id from gebruiker_profielen where id = auth.uid())
+  );
+create policy "Status bijwerken" on aanvoerder_uitnodigingen for update using (true);

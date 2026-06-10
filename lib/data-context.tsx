@@ -1,7 +1,7 @@
 'use client'
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import type { AppData, Stand, Wedstrijd, Blokkade, Dag } from './types'
-import { fetchAppData } from './supabase/queries'
+import type { AppData, CurrentProfile, Stand, Wedstrijd, Blokkade, Dag } from './types'
+import { fetchAppData, fetchCurrentProfile } from './supabase/queries'
 import { createClient } from './supabase/client'
 
 const EMPTY: AppData = { locaties: {}, competities: {}, poules: {}, teams: {}, wedstrijden: [], standen: {} }
@@ -15,7 +15,7 @@ type Action =
   | { type: 'UPDATE_TEAMGEGEVENS'; teamId: string; naam: string; tel: string; mail: string; locatie_id: string }
   | { type: 'CREATE_TEAM'; data: Omit<AppData['teams'][string], 'id' | 'hue' | 'blokkades'> }
   | { type: 'UPDATE_TEAM'; teamId: string; data: Partial<AppData['teams'][string]>; oldPouleId: string }
-  | { type: 'CREATE_POULE'; competitieId: string; naam: string; niveau: string }
+  | { type: 'CREATE_POULE'; competitieId: string; naam: string; niveau: string; format: 'enkel' | 'anderhalf' | 'dubbel' }
   | { type: 'CREATE_COMPETITIE'; data: Omit<AppData['competities'][string], 'id'> }
   | { type: 'CREATE_LOCATIE'; data: Omit<AppData['locaties'][string], 'id'> }
   | { type: 'UPDATE_LOCATIE'; locatieId: string; data: Partial<AppData['locaties'][string]> }
@@ -144,7 +144,13 @@ async function executeAction(action: Action): Promise<void> {
 
     case 'CREATE_POULE': {
       const id = 'P' + Date.now().toString().slice(-4)
-      await sb.from('poules').insert({ id, naam: action.naam, niveau: action.niveau || '', competitie_id: action.competitieId })
+      await sb.from('poules').insert({
+        id,
+        naam: action.naam,
+        niveau: action.niveau || '',
+        competitie_id: action.competitieId,
+        format: action.format,
+      })
       break
     }
 
@@ -182,6 +188,7 @@ async function executeAction(action: Action): Promise<void> {
 type DataContextType = {
   data: AppData
   loading: boolean
+  profile: CurrentProfile | null
   dispatch: (action: Action) => void
   refresh: () => Promise<void>
   teamsByPoule: (pouleId: string) => AppData['teams'][string][]
@@ -197,10 +204,12 @@ const DataContext = createContext<DataContextType | null>(null)
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY)
   const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<CurrentProfile | null>(null)
 
   const refresh = useCallback(async () => {
-    const fresh = await fetchAppData()
+    const [fresh, prof] = await Promise.all([fetchAppData(), fetchCurrentProfile()])
     setData(fresh)
+    setProfile(prof)
     setLoading(false)
   }, [])
 
@@ -249,7 +258,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <DataContext.Provider value={{ data, loading, dispatch, refresh, teamsByPoule, wedstrijdenVan, inkomendVerzoeken, competitiePoules, teamsInLocatie, standPositie }}>
+    <DataContext.Provider value={{ data, loading, profile, dispatch, refresh, teamsByPoule, wedstrijdenVan, inkomendVerzoeken, competitiePoules, teamsInLocatie, standPositie }}>
       {children}
     </DataContext.Provider>
   )

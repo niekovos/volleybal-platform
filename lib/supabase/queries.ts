@@ -1,8 +1,26 @@
-import type { AppData, Dag, WedstrijdStatus } from '../types'
+import type { AppData, CurrentProfile, Dag, WedstrijdStatus } from '../types'
 import { createClient } from './client'
 
 function tid(s: string): string {
   return s ? s.slice(0, 5) : s
+}
+
+export async function fetchCurrentProfile(): Promise<CurrentProfile | null> {
+  const sb = createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return null
+  const { data: p } = await sb
+    .from('gebruiker_profielen')
+    .select('rol, team_id, naam')
+    .eq('id', user.id)
+    .single()
+  if (!p) return null
+  return {
+    userId: user.id,
+    teamId: p.team_id ?? null,
+    rol: p.rol as CurrentProfile['rol'],
+    naam: p.naam,
+  }
 }
 
 export async function fetchAppData(): Promise<AppData> {
@@ -48,7 +66,13 @@ export async function fetchAppData(): Promise<AppData> {
 
   const poules: AppData['poules'] = {}
   for (const r of pouleRows ?? []) {
-    poules[r.id] = { id: r.id, naam: r.naam, niveau: r.niveau, competitie_id: r.competitie_id }
+    poules[r.id] = {
+      id: r.id,
+      naam: r.naam,
+      niveau: r.niveau,
+      competitie_id: r.competitie_id,
+      format: (r.format ?? 'enkel') as 'enkel' | 'anderhalf' | 'dubbel',
+    }
   }
 
   const blokByTeam: Record<string, { id: string; van: string; tot: string; reden: string }[]> = {}

@@ -41,6 +41,26 @@ export type Poule = {
   naam: string
   niveau: string
   competitie_id: string
+  format: 'enkel' | 'anderhalf' | 'dubbel'
+}
+
+export type AanvoerderUitnodiging = {
+  id: string
+  team_id: string
+  team_naam: string
+  email: string
+  type: 'uitnodiging' | 'overdracht'
+  token: string
+  van_id: string | null
+  status: 'open' | 'geaccepteerd' | 'afgewezen'
+  expires_at: string
+}
+
+export type CurrentProfile = {
+  userId: string
+  teamId: string | null
+  rol: 'speler' | 'aanvoerder' | 'organisator'
+  naam: string
 }
 
 export type Competitie = {
