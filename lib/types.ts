@@ -21,6 +21,8 @@ export type Locatie = {
   velden: number
 }
 
+export type SpeelavondEntry = { dag: string; tijd: string }
+
 export type Team = {
   id: string
   naam: string
@@ -32,8 +34,7 @@ export type Team = {
   locatie_id: string
   avond: Dag
   start: string
-  trainingsAvond: string | null
-  trainingsTijd: string | null
+  speelavonden: SpeelavondEntry[]
   aanvoerder: Aanvoerder
   blokkades: Blokkade[]
 }

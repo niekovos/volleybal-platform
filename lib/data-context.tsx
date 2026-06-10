@@ -1,6 +1,6 @@
 'use client'
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import type { AppData, CurrentProfile, Stand, Wedstrijd, Blokkade, Dag } from './types'
+import type { AppData, CurrentProfile, Stand, Wedstrijd, Blokkade, SpeelavondEntry } from './types'
 import { fetchAppData, fetchCurrentProfile } from './supabase/queries'
 import { createClient } from './supabase/client'
 
@@ -11,9 +11,9 @@ type Action =
   | { type: 'CREATE_VERZOEK'; wedstrijdId: string; door: string; aan: string; reden: string; nieuweDatum: string; nieuweTijd: string }
   | { type: 'ACCEPT_VERZOEK'; wedstrijdId: string }
   | { type: 'AFWIJS_VERZOEK'; wedstrijdId: string }
-  | { type: 'UPDATE_BESCHIKBAARHEID'; teamId: string; avond: Dag; start: string; blokkades: Blokkade[]; trainingsAvond?: string | null; trainingsTijd?: string | null }
+  | { type: 'UPDATE_BESCHIKBAARHEID'; teamId: string; speelavonden: SpeelavondEntry[]; blokkades: Blokkade[] }
   | { type: 'UPDATE_TEAMGEGEVENS'; teamId: string; naam: string; tel: string; mail: string; locatie_id: string }
-  | { type: 'CREATE_TEAM'; data: Omit<AppData['teams'][string], 'id' | 'hue' | 'blokkades' | 'trainingsAvond' | 'trainingsTijd'> & { poule_id: string | null } }
+  | { type: 'CREATE_TEAM'; data: Omit<AppData['teams'][string], 'id' | 'hue' | 'blokkades' | 'avond' | 'start'> & { poule_id: string | null } }
   | { type: 'UPDATE_TEAM'; teamId: string; data: Partial<AppData['teams'][string]>; oldPouleId: string | null }
   | { type: 'DELETE_TEAM'; teamId: string }
   | { type: 'CREATE_POULE'; competitieId: string; naam: string; niveau: string; format: 'enkel' | 'anderhalf' | 'dubbel' }
@@ -83,10 +83,7 @@ async function executeAction(action: Action): Promise<void> {
       break
 
     case 'UPDATE_BESCHIKBAARHEID': {
-      const upd: Record<string, unknown> = { avond: action.avond, start_tijd: action.start }
-      if ('trainingsAvond' in action) upd.trainings_avond = action.trainingsAvond ?? null
-      if ('trainingsTijd' in action) upd.trainings_tijd = action.trainingsTijd ?? null
-      await sb.from('teams').update(upd).eq('id', action.teamId)
+      await sb.from('teams').update({ speelavonden: action.speelavonden }).eq('id', action.teamId)
       await sb.from('blokkades').delete().eq('team_id', action.teamId)
       if (action.blokkades.length > 0) {
         await sb.from('blokkades').insert(
@@ -108,10 +105,12 @@ async function executeAction(action: Action): Promise<void> {
     case 'CREATE_TEAM': {
       const id = 'team' + Date.now()
       const d = action.data
+      const firstAvond = d.speelavonden[0]
       const teamRow: Record<string, unknown> = {
         id, naam: d.naam, kort: d.kort, plaats: d.plaats, adres: d.adres || '',
         hue: Math.floor(Math.random() * 360), locatie_id: d.locatie_id,
-        avond: d.avond, start_tijd: d.start,
+        speelavonden: d.speelavonden,
+        avond: firstAvond?.dag ?? 'maandag', start_tijd: firstAvond?.tijd ?? '20:00',
         aanvoerder_naam: d.aanvoerder.naam, aanvoerder_tel: d.aanvoerder.tel, aanvoerder_mail: d.aanvoerder.mail,
       }
       if (d.poule_id) teamRow.poule_id = d.poule_id
@@ -133,6 +132,13 @@ async function executeAction(action: Action): Promise<void> {
       if (d.locatie_id !== undefined) upd.locatie_id = d.locatie_id
       if (d.avond !== undefined) upd.avond = d.avond
       if (d.start !== undefined) upd.start_tijd = d.start
+      if (d.speelavonden !== undefined) {
+        upd.speelavonden = d.speelavonden
+        if (d.speelavonden[0]) {
+          upd.avond = d.speelavonden[0].dag
+          upd.start_tijd = d.speelavonden[0].tijd
+        }
+      }
       if (d.aanvoerder !== undefined) {
         upd.aanvoerder_naam = d.aanvoerder.naam
         upd.aanvoerder_tel = d.aanvoerder.tel

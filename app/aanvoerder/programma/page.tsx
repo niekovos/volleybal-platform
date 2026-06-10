@@ -9,12 +9,10 @@ import { Toast } from '@/components/ui/Toast'
 import { UitslagSheet } from '@/components/captain/UitslagSheet'
 import { VerplaatsSheet } from '@/components/captain/VerplaatsSheet'
 import { useData } from '@/lib/data-context'
-import { DEMO_CAPTAIN_TEAM } from '@/lib/demo'
-import type { Dag } from '@/lib/types'
 
 export default function AanvoerderProgrammaPage() {
-  const { data, dispatch, wedstrijdenVan } = useData()
-  const teamId = DEMO_CAPTAIN_TEAM
+  const { data, dispatch, profile, wedstrijdenVan } = useData()
+  const teamId = profile?.teamId ?? ''
   const [uitslagOpen, setUitslagOpen] = useState(false)
   const [verplaatsOpen, setVerplaatsOpen] = useState(false)
   const [selectedWId, setSelectedWId] = useState<string | undefined>()

@@ -1,6 +1,7 @@
 import type { Dag } from './types'
 
 export const DAGEN: Dag[] = ['maandag','dinsdag','woensdag','donderdag','vrijdag']
+export const ALLE_DAGEN = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] as const
 export const DAG_KORT: Record<string, string> = { zondag:'zo', maandag:'ma', dinsdag:'di', woensdag:'wo', donderdag:'do', vrijdag:'vr', zaterdag:'za' }
 export const MND = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 export const DAG_NR: Record<string, number> = { zondag:0, maandag:1, dinsdag:2, woensdag:3, donderdag:4, vrijdag:5, zaterdag:6 }

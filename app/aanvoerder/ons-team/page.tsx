@@ -16,7 +16,6 @@ import { ContactSheet } from '@/components/captain/ContactSheet'
 import { useData } from '@/lib/data-context'
 import { createClient } from '@/lib/supabase/client'
 import { cap } from '@/lib/utils'
-import type { Dag } from '@/lib/types'
 
 export default function OnsTeamPage() {
   const { data, dispatch, profile } = useData()
@@ -87,10 +86,11 @@ export default function OnsTeamPage() {
         </Card>
 
         <div>
-          <SectionTitle action="Wijzigen" onAction={() => setBeschikbaarOpen(true)}>Speelavond &amp; training</SectionTitle>
+          <SectionTitle action="Wijzigen" onAction={() => setBeschikbaarOpen(true)}>Speelavonden</SectionTitle>
           <List>
-            <Row icon="klok" title="Speelavond" detail={`${cap(t.avond)} · ${t.start}`} />
-            {t.trainingsAvond && <Row icon="bel" title="Trainingsavond" detail={`${cap(t.trainingsAvond)}${t.trainingsTijd ? ` · ${t.trainingsTijd}` : ''}`} />}
+            {t.speelavonden.length > 0
+              ? t.speelavonden.map((e, i) => <Row key={i} icon="klok" title={cap(e.dag)} detail={e.tijd} />)
+              : <Row icon="klok" title="Nog geen speelavonden ingesteld" detail="" />}
             {l && <Row icon="pin" title={l.naam} detail={l.plaats} />}
           </List>
         </div>
@@ -139,13 +139,10 @@ export default function OnsTeamPage() {
       <BeschikbaarSheet
         open={beschikbaarOpen}
         onClose={() => setBeschikbaarOpen(false)}
-        teamAvond={t.avond}
-        teamStart={t.start}
+        teamSpeelavonden={t.speelavonden}
         teamBlokkades={t.blokkades}
-        teamTrainingsAvond={t.trainingsAvond}
-        teamTrainingsTijd={t.trainingsTijd}
-        onSubmit={(avond, start, blokkades, trainingsAvond, trainingsTijd) => {
-          dispatch({ type: 'UPDATE_BESCHIKBAARHEID', teamId, avond: avond as Dag, start, blokkades, trainingsAvond, trainingsTijd })
+        onSubmit={(speelavonden, blokkades) => {
+          dispatch({ type: 'UPDATE_BESCHIKBAARHEID', teamId, speelavonden, blokkades })
           setBeschikbaarOpen(false)
           flash('Beschikbaarheid opgeslagen')
         }}

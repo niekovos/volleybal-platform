@@ -10,11 +10,11 @@ import { Field, Input, Select } from '@/components/ui/Field'
 import { useData } from '@/lib/data-context'
 import { createClient } from '@/lib/supabase/client'
 import { generateSchema } from '@/lib/supabase/schedule'
-import { cap } from '@/lib/utils'
+import { cap, ALLE_DAGEN } from '@/lib/utils'
+import type { SpeelavondEntry } from '@/lib/types'
 
 const COMP_TYPES = { heren: 'Heren', dames: 'Dames', mix: 'Mix' }
 const COMP_FORMATS = { enkel: 'Enkel', anderhalf: 'Anderhalf', dubbel: 'Dubbel' }
-const DAGEN_SEL = ['maandag','dinsdag','woensdag','donderdag','vrijdag'] as const
 
 function OrgTopbar({ title, sub, actions }: { title: string; sub?: string; actions?: React.ReactNode }) {
   return (
@@ -108,23 +108,23 @@ export default function CompetitiesPage() {
   const [teamModal, setTeamModal] = useState<{ pouleId?: string; teamId?: string } | null>(null)
   const [tNaam, setTNaam] = useState(''); const [tKort, setTKort] = useState(''); const [tPlaats, setTPlaats] = useState('')
   const [tAdres, setTAdres] = useState(''); const [tPoule, setTPoule] = useState(selPoule || ''); const [tLoc, setTLoc] = useState(Object.keys(data.locaties)[0] || '')
-  const [tAvond, setTAvond] = useState<typeof DAGEN_SEL[number]>('dinsdag'); const [tAanv, setTAanv] = useState(''); const [tTel, setTTel] = useState(''); const [tMail, setTMail] = useState('')
+  const [tSpeelavonden, setTSpeelavonden] = useState<SpeelavondEntry[]>([]); const [tAanv, setTAanv] = useState(''); const [tTel, setTTel] = useState(''); const [tMail, setTMail] = useState('')
 
   const openTeamEdit = (teamId: string) => {
     const t = data.teams[teamId]; if (!t) return
     setTNaam(t.naam); setTKort(t.kort); setTPlaats(t.plaats); setTAdres(t.adres || '')
-    setTPoule(t.poule_id || selPoule || ''); setTLoc(t.locatie_id); setTAvond(t.avond as typeof DAGEN_SEL[number])
+    setTPoule(t.poule_id || selPoule || ''); setTLoc(t.locatie_id); setTSpeelavonden(t.speelavonden ?? [])
     setTAanv(t.aanvoerder.naam); setTTel(t.aanvoerder.tel); setTMail(t.aanvoerder.mail)
     setTeamModal({ teamId })
   }
   const openTeamNew = (pouleId: string) => {
     setTNaam(''); setTKort(''); setTPlaats(''); setTAdres(''); setTPoule(pouleId); setTLoc(Object.keys(data.locaties)[0] || '')
-    setTAvond('dinsdag'); setTAanv(''); setTTel(''); setTMail('')
+    setTSpeelavonden([]); setTAanv(''); setTTel(''); setTMail('')
     setTeamModal({ pouleId })
   }
   const saveTeam = () => {
     const teamId = teamModal?.teamId
-    const payload = { naam: tNaam, kort: tKort.toUpperCase().slice(0,3), plaats: tPlaats, adres: tAdres, poule_id: tPoule || null, locatie_id: tLoc, avond: tAvond, aanvoerder: { naam: tAanv, tel: tTel, mail: tMail }, start: '20:00', blokkades: [] as never[] }
+    const payload = { naam: tNaam, kort: tKort.toUpperCase().slice(0,3), plaats: tPlaats, adres: tAdres, poule_id: tPoule || null, locatie_id: tLoc, speelavonden: tSpeelavonden, aanvoerder: { naam: tAanv, tel: tTel, mail: tMail }, blokkades: [] as never[] }
     if (teamId) dispatch({ type: 'UPDATE_TEAM', teamId, data: payload, oldPouleId: data.teams[teamId]?.poule_id ?? null })
     else dispatch({ type: 'CREATE_TEAM', data: payload })
     setTeamModal(null)
@@ -287,7 +287,7 @@ export default function CompetitiesPage() {
                       </div>
                       <div style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, color: 'var(--ink-2)' }}>{t.aanvoerder.naam || '—'}</div>
                       <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-2)' }}>{data.locaties[t.locatie_id]?.naam || '—'}</div>
-                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-2)', textTransform: 'capitalize' }}>{t.avond}</div>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-2)' }}>{t.speelavonden.length > 0 ? t.speelavonden.map(e => cap(e.dag.slice(0, 2))).join(', ') : <span style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>—</span>}</div>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button onClick={() => { setInviteEmail(''); setInviteResult(null); setInviteModal({ teamId: t.id, teamNaam: t.naam }) }} title="Aanvoerder uitnodigen" style={{ border: 'none', background: 'var(--primary-soft)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Icon name="mail" size={16} color="var(--primary)" />
@@ -407,10 +407,35 @@ export default function CompetitiesPage() {
               </Select>
             </Field>
           </div>
-          <Field label="Speelavond">
-            <Select value={tAvond} onChange={e => setTAvond(e.target.value as typeof DAGEN_SEL[number])}>
-              {DAGEN_SEL.map(d => <option key={d} value={d}>{cap(d)}</option>)}
-            </Select>
+          <Field label="Speelavonden (optioneel)">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {tSpeelavonden.map((entry, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select
+                    value={entry.dag}
+                    onChange={e => setTSpeelavonden(av => av.map((x, idx) => idx === i ? { ...x, dag: e.target.value } : x))}
+                    style={{ flex: 1, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius)', fontFamily: 'var(--font-body)', fontSize: 14, background: 'var(--surface)', color: 'var(--ink)', cursor: 'pointer' }}
+                  >
+                    {ALLE_DAGEN.map(d => <option key={d} value={d}>{cap(d)}</option>)}
+                  </select>
+                  <input
+                    type="time"
+                    value={entry.tijd}
+                    onChange={e => setTSpeelavonden(av => av.map((x, idx) => idx === i ? { ...x, tijd: e.target.value } : x))}
+                    style={{ width: 110, flexShrink: 0, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius)', fontFamily: 'var(--font-body)', fontSize: 14, background: 'var(--surface)', color: 'var(--ink)' }}
+                  />
+                  <button
+                    onClick={() => setTSpeelavonden(av => av.filter((_, idx) => idx !== i))}
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 6, flexShrink: 0, display: 'flex', alignItems: 'center' }}
+                  >
+                    <Icon name="x" size={18} color="var(--ink-3)" />
+                  </button>
+                </div>
+              ))}
+              <Button size="sm" variant="soft" icon="plus" full onClick={() => setTSpeelavonden(av => [...av, { dag: 'maandag', tijd: '20:00' }])}>
+                Speelavond toevoegen
+              </Button>
+            </div>
           </Field>
           <div style={{ height: 1, background: 'var(--line)', margin: '4px 0' }} />
           <Field label="Aanvoerder naam"><Input value={tAanv} onChange={e => setTAanv(e.target.value)} placeholder="Naam" /></Field>

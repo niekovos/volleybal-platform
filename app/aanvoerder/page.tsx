@@ -8,23 +8,20 @@ import { Icon } from '@/components/ui/Icon'
 import { Monogram } from '@/components/ui/Monogram'
 import { StandenTabel } from '@/components/ui/StandenTabel'
 import { WedstrijdRij } from '@/components/ui/WedstrijdRij'
-import { List } from '@/components/ui/List'
 import { Toast } from '@/components/ui/Toast'
 import { UitslagSheet } from '@/components/captain/UitslagSheet'
 import { VerplaatsSheet } from '@/components/captain/VerplaatsSheet'
 import { BeschikbaarSheet } from '@/components/captain/BeschikbaarSheet'
 import { ContactSheet } from '@/components/captain/ContactSheet'
 import { useData } from '@/lib/data-context'
-import { DEMO_CAPTAIN_TEAM } from '@/lib/demo'
 import { fmtDag } from '@/lib/utils'
-import type { Dag } from '@/lib/types'
 
 type Sheet = 'uitslag' | 'verplaats' | 'beschikbaar' | 'contact' | null
 type ToastMsg = string | null
 
 export default function AanvoerderPage() {
-  const { data, dispatch, wedstrijdenVan, inkomendVerzoeken, standPositie } = useData()
-  const teamId = DEMO_CAPTAIN_TEAM
+  const { data, dispatch, profile, wedstrijdenVan, inkomendVerzoeken, standPositie } = useData()
+  const teamId = profile?.teamId ?? ''
   const t = data.teams[teamId]
   const [sheet, setSheet] = useState<Sheet>(null)
   const [selectedWedstrijd, setSelectedWedstrijd] = useState<string | undefined>()
@@ -64,8 +61,8 @@ export default function AanvoerderPage() {
     setSheet(null)
     flash('Verplaatsverzoek verstuurd')
   }
-  const handleBeschikbaar = (avond: Dag, start: string, blokkades: typeof t.blokkades) => {
-    dispatch({ type: 'UPDATE_BESCHIKBAARHEID', teamId, avond, start, blokkades })
+  const handleBeschikbaar = (speelavonden: { dag: string; tijd: string }[], blokkades: typeof t.blokkades) => {
+    dispatch({ type: 'UPDATE_BESCHIKBAARHEID', teamId, speelavonden, blokkades })
     setSheet(null)
     flash('Beschikbaarheid opgeslagen')
   }
@@ -216,8 +213,7 @@ export default function AanvoerderPage() {
       <BeschikbaarSheet
         open={sheet === 'beschikbaar'}
         onClose={() => setSheet(null)}
-        teamAvond={t.avond}
-        teamStart={t.start}
+        teamSpeelavonden={t.speelavonden}
         teamBlokkades={t.blokkades}
         onSubmit={handleBeschikbaar}
       />
