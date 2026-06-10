@@ -71,13 +71,19 @@ export async function generateSchema(
   const blokkades = (blokRows ?? []) as Array<{ team_id: string; van: string; tot: string }>
 
   // Build fixture list
-  let fixtures = buildFixtures(teams.map(t => t.id))
+  const base = buildFixtures(teams.map(t => t.id))
+  const rev = base.map(([h, a]) => [a, h] as [string, string])
 
-  if (competitie.format === 'dubbel') {
-    // Each pair plays twice: home and away
-    fixtures = [...fixtures, ...fixtures.map(([h, a]) => [a, h] as [string, string])]
+  // enkel: 2x (1 thuis + 1 uit), anderhalf: 3x (2+1), dubbel: 4x (2+2)
+  let fixtures: Array<[string, string]>
+  if (competitie.format === 'anderhalf') {
+    fixtures = [...base, ...rev, ...base]
+  } else if (competitie.format === 'dubbel') {
+    fixtures = [...base, ...rev, ...base, ...rev]
+  } else {
+    // enkel (default)
+    fixtures = [...base, ...rev]
   }
-  // 'anderhalf' and 'enkel' both use the single round-robin
 
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const startDate = new Date(competitie.startDatum)
