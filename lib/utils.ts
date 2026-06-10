@@ -1,4 +1,4 @@
-import type { Dag } from './types'
+import type { Dag, SpeelavondEntry } from './types'
 
 export const DAGEN: Dag[] = ['maandag','dinsdag','woensdag','donderdag','vrijdag']
 export const ALLE_DAGEN = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] as const
@@ -22,19 +22,38 @@ export function fmtDag(iso: string): string {
   return `${dagKort} ${d.getDate()} ${MND[d.getMonth()]}`
 }
 
-export function suggestiesVoor(avond: Dag, n = 3): Array<{ iso: string; label: string }> {
-  const out: Array<{ iso: string; label: string }> = []
-  const target = DAG_NR[avond]
-  const d = new Date()
-  while (out.length < n) {
+// Suggest free match dates based on the home team's speelavonden.
+// Starts AFTER `vanaf` (original match date), skips dates already in `bezet`.
+export function suggestiesVoor(
+  speelavonden: SpeelavondEntry[],
+  bezet: string[],
+  vanaf: string,
+  n = 5
+): Array<{ iso: string; label: string; tijd: string }> {
+  const out: Array<{ iso: string; label: string; tijd: string }> = []
+  if (speelavonden.length === 0) return out
+
+  // Map JS getDay() number → SpeelavondEntry
+  const dagMap = new Map<number, SpeelavondEntry>()
+  for (const s of speelavonden) {
+    const nr = DAG_NR[s.dag]
+    if (nr !== undefined) dagMap.set(nr, s)
+  }
+
+  const bezetSet = new Set(bezet)
+  const d = new Date(vanaf)
+  let tries = 0
+
+  while (out.length < n && tries < 365) {
+    tries++
     d.setDate(d.getDate() + 1)
-    if (d.getDay() === target) {
-      out.push({
-        iso: d.toISOString().slice(0, 10),
-        label: `${DAG_KORT[avond]} ${d.getDate()} ${MND[d.getMonth()]}`,
-      })
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const entry = dagMap.get(d.getDay())
+    if (entry && !bezetSet.has(iso)) {
+      out.push({ iso, label: `${DAG_KORT[entry.dag] ?? '?'} ${d.getDate()} ${MND[d.getMonth()]}`, tijd: entry.tijd })
     }
   }
+
   return out
 }
 

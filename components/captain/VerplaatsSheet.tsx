@@ -12,12 +12,13 @@ interface VerplaatsSheetProps {
   open: boolean
   onClose: () => void
   wedstrijden: Wedstrijd[]
+  alleWedstrijden: Wedstrijd[]
   teams: AppData['teams']
   teamId: string
   onSubmit: (wedstrijdId: string, reden: string, datum: string, tijd: string) => void
 }
 
-export function VerplaatsSheet({ open, onClose, wedstrijden, teams, teamId, onSubmit }: VerplaatsSheetProps) {
+export function VerplaatsSheet({ open, onClose, wedstrijden, alleWedstrijden, teams, teamId, onSubmit }: VerplaatsSheetProps) {
   const komend = wedstrijden.filter(w => w.status === 'gepland')
   const [sel, setSel] = useState(komend[0]?.id || '')
   const [reden, setReden] = useState('')
@@ -32,9 +33,28 @@ export function VerplaatsSheet({ open, onClose, wedstrijden, teams, teamId, onSu
 
   const w = wedstrijden.find(x => x.id === sel)
   const tegenstander = w ? teams[w.thuis_id === teamId ? w.uit_id : w.thuis_id] : null
-  const sugg = tegenstander ? suggestiesVoor(tegenstander.avond) : []
+  const thuisTeam = w ? teams[w.thuis_id] : null
+
+  // Dates already occupied by either team (excluding the match being rescheduled)
+  const bezet = w && tegenstander
+    ? alleWedstrijden
+        .filter(x => x.id !== w.id && (
+          x.thuis_id === w.thuis_id || x.uit_id === w.thuis_id ||
+          x.thuis_id === tegenstander.id || x.uit_id === tegenstander.id
+        ))
+        .map(x => x.datum)
+    : []
+
+  const speelavonden = thuisTeam?.speelavonden ?? []
+  const sugg = w ? suggestiesVoor(speelavonden, bezet, w.datum) : []
+
   const effectDatum = handmatig ? handDatum : datum
   const geldig = reden.trim() && effectDatum && tijd
+
+  const handleSugg = (iso: string, suggTijd: string) => {
+    setDatum(iso)
+    setTijd(suggTijd)
+  }
 
   return (
     <Sheet
@@ -73,21 +93,27 @@ export function VerplaatsSheet({ open, onClose, wedstrijden, teams, teamId, onSu
       </div>
       <div style={{ marginTop: 18 }}>
         <Field label="Nieuwe datum voorstellen">
-          {tegenstander && (
+          {thuisTeam && speelavonden.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--primary-soft)', color: 'var(--primary)', padding: '10px 12px', borderRadius: 'var(--radius)', marginBottom: 10 }}>
               <Icon name="info" size={16} />
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600 }}>
-                {tegenstander.naam} speelt op {cap(tegenstander.avond)}
+                {thuisTeam.naam} speelt op {speelavonden.map(e => cap(e.dag)).join(', ')}
               </span>
             </div>
           )}
           {!handmatig && (
             <>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                {sugg.map(s => (
-                  <Pill key={s.iso} active={datum === s.iso} onClick={() => setDatum(s.iso)}>{s.label}</Pill>
-                ))}
-              </div>
+              {sugg.length > 0 ? (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {sugg.map(s => (
+                    <Pill key={s.iso} active={datum === s.iso} onClick={() => handleSugg(s.iso, s.tijd)}>{s.label}</Pill>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-3)', marginBottom: 10 }}>
+                  Geen beschikbare speelavonden gevonden. Voer een datum in.
+                </div>
+              )}
               <button
                 onClick={() => { setHandmatig(true); setDatum(null) }}
                 style={{ border: 'none', background: 'none', color: 'var(--primary)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, padding: '4px 0' }}

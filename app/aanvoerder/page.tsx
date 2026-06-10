@@ -206,6 +206,7 @@ export default function AanvoerderPage() {
         open={sheet === 'verplaats'}
         onClose={() => setSheet(null)}
         wedstrijden={mijn}
+        alleWedstrijden={data.wedstrijden}
         teams={data.teams}
         teamId={teamId}
         onSubmit={handleVerplaats}
