@@ -8,6 +8,8 @@ import { Monogram } from '@/components/ui/Monogram'
 import { Pill } from '@/components/ui/Pill'
 import { Field, Input, Select } from '@/components/ui/Field'
 import { useData } from '@/lib/data-context'
+import { createClient } from '@/lib/supabase/client'
+import { generateSchema } from '@/lib/supabase/schedule'
 
 const COMP_TYPES = { heren: 'Heren', dames: 'Dames', mix: 'Mix' }
 const COMP_FORMATS = { enkel: 'Enkele competitie', anderhalf: 'Anderhalve', dubbel: 'Dubbele' }
@@ -26,12 +28,14 @@ function OrgTopbar({ title, sub, actions }: { title: string; sub?: string; actio
 }
 
 export default function CompetitiesPage() {
-  const { data, dispatch, competitiePoules, teamsByPoule } = useData()
+  const { data, dispatch, refresh, competitiePoules, teamsByPoule } = useData()
   const [selComp, setSelComp] = useState(Object.keys(data.competities)[0] || null)
   const [selPoule, setSelPoule] = useState<string | null>(null)
   const [compModal, setCompModal] = useState(false)
   const [pouleModal, setPouleModal] = useState<{ compId: string } | null>(null)
   const [teamModal, setTeamModal] = useState<{ pouleId?: string; teamId?: string } | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [genMsg, setGenMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const comp = selComp ? data.competities[selComp] : null
   const compPoules = selComp ? competitiePoules(selComp) : []
@@ -73,6 +77,25 @@ export default function CompetitiesPage() {
     if (teamId) dispatch({ type: 'UPDATE_TEAM', teamId, data: payload, oldPouleId: data.teams[teamId]?.poule_id || tPoule })
     else dispatch({ type: 'CREATE_TEAM', data: payload })
     setTeamModal(null)
+  }
+
+  const handleGenerateSchema = async (overschrijven: boolean) => {
+    if (!selPoule || !comp || !poule) return
+    setGenerating(true)
+    setGenMsg(null)
+
+    try {
+      if (overschrijven) {
+        await createClient().from('wedstrijden').delete().eq('poule_id', selPoule).eq('status', 'gepland')
+      }
+      const count = await generateSchema(selPoule, teams, comp)
+      await refresh()
+      setGenMsg({ ok: true, text: `${count} wedstrijden succesvol ingepland.` })
+    } catch {
+      setGenMsg({ ok: false, text: 'Genereren mislukt. Controleer of alle teams een locatie en speelavond hebben.' })
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -132,13 +155,50 @@ export default function CompetitiesPage() {
         <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
           {poule ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 16 }}>
                 <div>
                   <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, color: 'var(--ink)' }}>{comp?.naam} — {poule.naam}</h2>
                   <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-3)' }}>{poule.niveau} · {comp ? COMP_FORMATS[comp.format] : ''}</div>
                 </div>
-                <Button size="sm" icon="plus" onClick={() => openTeamNew(selPoule!)}>Team toevoegen</Button>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <Button size="sm" variant="ghost" icon="plus" onClick={() => openTeamNew(selPoule!)}>Team</Button>
+                  {(() => {
+                    const bestaand = data.wedstrijden.filter(w => w.poule_id === selPoule)
+                    const gespeeld = bestaand.filter(w => w.status === 'gespeeld').length
+                    const gepland  = bestaand.filter(w => w.status === 'gepland' || w.status === 'verzoek').length
+                    if (teams.length < 2) return null
+                    if (gespeeld > 0) return (
+                      <Button size="sm" variant="ghost" icon="programma" disabled>{bestaand.length} wedstrijden</Button>
+                    )
+                    if (gepland > 0) return (
+                      <Button size="sm" variant="ghost" icon="verplaats" disabled={generating}
+                        onClick={() => handleGenerateSchema(true)}>
+                        {generating ? 'Bezig…' : 'Opnieuw plannen'}
+                      </Button>
+                    )
+                    return (
+                      <Button size="sm" icon="programma" disabled={generating}
+                        onClick={() => handleGenerateSchema(false)}>
+                        {generating ? 'Bezig…' : 'Schema genereren'}
+                      </Button>
+                    )
+                  })()}
+                </div>
               </div>
+              {genMsg && (
+                <div style={{
+                  marginBottom: 14,
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius)',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: genMsg.ok ? 'oklch(0.93 0.07 155)' : 'var(--warn-soft)',
+                  color:      genMsg.ok ? 'oklch(0.32 0.12 155)' : 'var(--warn-ink)',
+                }}>
+                  {genMsg.text}
+                </div>
+              )}
               {teams.length > 0 ? (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 1.3fr 1fr 36px', gap: 12, padding: '11px 18px', borderBottom: '1px solid var(--line)', fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--ink-3)' }}>

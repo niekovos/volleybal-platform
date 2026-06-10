@@ -183,6 +183,7 @@ type DataContextType = {
   data: AppData
   loading: boolean
   dispatch: (action: Action) => void
+  refresh: () => Promise<void>
   teamsByPoule: (pouleId: string) => AppData['teams'][string][]
   wedstrijdenVan: (teamId: string) => Wedstrijd[]
   inkomendVerzoeken: (teamId: string) => Wedstrijd[]
@@ -248,7 +249,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <DataContext.Provider value={{ data, loading, dispatch, teamsByPoule, wedstrijdenVan, inkomendVerzoeken, competitiePoules, teamsInLocatie, standPositie }}>
+    <DataContext.Provider value={{ data, loading, dispatch, refresh, teamsByPoule, wedstrijdenVan, inkomendVerzoeken, competitiePoules, teamsInLocatie, standPositie }}>
       {children}
     </DataContext.Provider>
   )

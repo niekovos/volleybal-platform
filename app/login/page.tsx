@@ -64,15 +64,32 @@ export default function LoginPage() {
       .eq('id', user.id)
       .single()
 
-    if (adminMode && profiel?.rol !== 'organisator') {
+    // Profiel aanmaken als het ontbreekt (bijv. na e-mailbevestiging)
+    if (!profiel) {
+      if (adminMode) {
+        setError('Dit account heeft geen beheerdersrechten.')
+        await sb.auth.signOut()
+        setLoading(false)
+        return
+      }
+      await sb.from('gebruiker_profielen').insert({
+        id: user.id,
+        naam: user.email?.split('@')[0] ?? 'Gebruiker',
+        rol: 'speler',
+      })
+      router.replace('/standen')
+      return
+    }
+
+    if (adminMode && profiel.rol !== 'organisator') {
       setError('Dit account heeft geen beheerdersrechten.')
       await sb.auth.signOut()
       setLoading(false)
       return
     }
 
-    if (profiel?.rol === 'organisator') router.replace('/organisator')
-    else if (profiel?.rol === 'aanvoerder') router.replace('/aanvoerder')
+    if (profiel.rol === 'organisator') router.replace('/organisator')
+    else if (profiel.rol === 'aanvoerder') router.replace('/aanvoerder')
     else router.replace('/standen')
   }
 
@@ -255,10 +272,11 @@ export default function LoginPage() {
                 style={{
                   fontFamily: 'var(--font-body)',
                   fontSize: 13,
-                  color: 'var(--positive-ink, var(--ink))',
-                  background: 'var(--positive-soft, oklch(0.96 0.04 150))',
+                  color: 'oklch(0.32 0.12 155)',
+                  background: 'oklch(0.93 0.07 155)',
                   padding: '10px 12px',
                   borderRadius: 'var(--radius)',
+                  fontWeight: 600,
                 }}
               >
                 {info}
