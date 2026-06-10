@@ -7,6 +7,7 @@ const TABS = [
   { href: '/aanvoerder/programma', label: 'Programma', icon: 'programma' },
   { href: '/aanvoerder/standen',   label: 'Standen',   icon: 'standen'   },
   { href: '/aanvoerder/ons-team',  label: 'Ons team',  icon: 'team'      },
+  { href: '/account',              label: 'Account',   icon: 'persoon'   },
 ]
 
 export default function AanvoerderLayout({ children }: { children: React.ReactNode }) {

@@ -26,9 +26,9 @@ export default function TeamDetailPage({ params }: { params: Promise<{ teamId: s
   if (!t) return <div style={{ padding: 18, color: 'var(--ink-3)' }}>Team niet gevonden.</div>
 
   const l = data.locaties[t.locatie_id]
-  const poule = data.poules[t.poule_id]
-  const rij = (data.standen[t.poule_id] || []).find(r => r.team_id === teamId)
-  const pos = standPositie(teamId, t.poule_id)
+  const poule = t.poule_id ? data.poules[t.poule_id] : null
+  const rij = t.poule_id ? (data.standen[t.poule_id] || []).find((r: { team_id: string }) => r.team_id === teamId) : null
+  const pos = t.poule_id ? standPositie(teamId, t.poule_id) : 0
   const wedstrijden = wedstrijdenVan(teamId)
   const komend = wedstrijden.filter(w => w.status !== 'gespeeld')
   const isFav = fav === teamId

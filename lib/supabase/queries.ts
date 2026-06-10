@@ -89,10 +89,12 @@ export async function fetchAppData(): Promise<AppData> {
       plaats: r.plaats,
       adres: r.adres,
       hue: r.hue,
-      poule_id: r.poule_id,
+      poule_id: r.poule_id ?? null,
       locatie_id: r.locatie_id,
       avond: r.avond as Dag,
       start: tid(r.start_tijd),
+      trainingsAvond: r.trainings_avond ?? null,
+      trainingsTijd: r.trainings_tijd ? tid(r.trainings_tijd) : null,
       aanvoerder: { naam: r.aanvoerder_naam, tel: r.aanvoerder_tel, mail: r.aanvoerder_mail },
       blokkades: blokByTeam[r.id] ?? [],
     }

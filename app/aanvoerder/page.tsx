@@ -36,9 +36,9 @@ export default function AanvoerderPage() {
   const inTeVullen = mijn.filter(w => w.status === 'gespeeld' && !w.uitslag)
   const komend = mijn.filter(w => w.status === 'gepland' || w.status === 'verzoek')
   const inkomend = inkomendVerzoeken(teamId)
-  const pos = standPositie(teamId, t.poule_id)
-  const standen = data.standen[t.poule_id] || []
-  const poule = data.poules[t.poule_id]
+  const pos = t.poule_id ? standPositie(teamId, t.poule_id) : 0
+  const standen = t.poule_id ? (data.standen[t.poule_id] || []) : []
+  const poule = t.poule_id ? data.poules[t.poule_id] : null
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2600) }
 

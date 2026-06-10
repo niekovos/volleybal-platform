@@ -7,8 +7,8 @@ import { DEMO_CAPTAIN_TEAM } from '@/lib/demo'
 export default function AanvoerderStandenPage() {
   const { data } = useData()
   const t = data.teams[DEMO_CAPTAIN_TEAM]
-  const poule = t ? data.poules[t.poule_id] : null
-  const standen = t ? (data.standen[t.poule_id] || []) : []
+  const poule = t?.poule_id ? data.poules[t.poule_id] : null
+  const standen = t?.poule_id ? (data.standen[t.poule_id] || []) : []
 
   return (
     <>

@@ -38,7 +38,7 @@ export default function OnsTeamPage() {
   )
 
   const l = data.locaties[t.locatie_id]
-  const poule = data.poules[t.poule_id]
+  const poule = t.poule_id ? data.poules[t.poule_id] : null
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2600) }
 
   const handleOverdracht = async () => {
@@ -87,9 +87,10 @@ export default function OnsTeamPage() {
         </Card>
 
         <div>
-          <SectionTitle action="Wijzigen" onAction={() => setBeschikbaarOpen(true)}>Speelavond &amp; locatie</SectionTitle>
+          <SectionTitle action="Wijzigen" onAction={() => setBeschikbaarOpen(true)}>Speelavond &amp; training</SectionTitle>
           <List>
-            <Row icon="klok" title="Vaste speelavond" detail={`${cap(t.avond)} · ${t.start}`} />
+            <Row icon="klok" title="Speelavond" detail={`${cap(t.avond)} · ${t.start}`} />
+            {t.trainingsAvond && <Row icon="bel" title="Trainingsavond" detail={`${cap(t.trainingsAvond)}${t.trainingsTijd ? ` · ${t.trainingsTijd}` : ''}`} />}
             {l && <Row icon="pin" title={l.naam} detail={l.plaats} />}
           </List>
         </div>
@@ -141,8 +142,10 @@ export default function OnsTeamPage() {
         teamAvond={t.avond}
         teamStart={t.start}
         teamBlokkades={t.blokkades}
-        onSubmit={(avond, start, blokkades) => {
-          dispatch({ type: 'UPDATE_BESCHIKBAARHEID', teamId, avond: avond as Dag, start, blokkades })
+        teamTrainingsAvond={t.trainingsAvond}
+        teamTrainingsTijd={t.trainingsTijd}
+        onSubmit={(avond, start, blokkades, trainingsAvond, trainingsTijd) => {
+          dispatch({ type: 'UPDATE_BESCHIKBAARHEID', teamId, avond: avond as Dag, start, blokkades, trainingsAvond, trainingsTijd })
           setBeschikbaarOpen(false)
           flash('Beschikbaarheid opgeslagen')
         }}

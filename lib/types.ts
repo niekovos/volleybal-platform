@@ -28,12 +28,21 @@ export type Team = {
   plaats: string
   adres: string
   hue: number
-  poule_id: string
+  poule_id: string | null
   locatie_id: string
   avond: Dag
   start: string
+  trainingsAvond: string | null
+  trainingsTijd: string | null
   aanvoerder: Aanvoerder
   blokkades: Blokkade[]
+}
+
+export type GebruikerProfiel = {
+  id: string
+  naam: string
+  rol: 'speler' | 'aanvoerder' | 'organisator'
+  team_id: string | null
 }
 
 export type Poule = {

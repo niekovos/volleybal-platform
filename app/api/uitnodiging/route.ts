@@ -38,10 +38,8 @@ export async function POST(request: NextRequest) {
   const { data: team } = await supabase.from('teams').select('id').eq('id', teamId).single()
   if (!team) return NextResponse.json({ error: 'Team niet gevonden' }, { status: 404 })
 
-  const sb = createServiceClient()
-
-  // Create invitation record — use service role to bypass potential RLS edge cases
-  const { data: invite, error: insertErr } = await sb
+  // Create invite record using the server client (organizer RLS policy allows this)
+  const { data: invite, error: insertErr } = await supabase
     .from('aanvoerder_uitnodigingen')
     .insert({ team_id: teamId, email, type, van_id: user.id })
     .select('token')
@@ -54,15 +52,18 @@ export async function POST(request: NextRequest) {
   const origin = new URL(request.url).origin
   const inviteUrl = `${origin}/uitnodiging/${invite.token}`
 
-  // Try to send email via Supabase Admin invite (only works for new users)
+  // Try to send email via Supabase Admin invite (requires service role key)
   let emailSent = false
-  try {
-    const { error: inviteErr } = await sb.auth.admin.inviteUserByEmail(email, {
-      redirectTo: inviteUrl,
-    })
-    emailSent = !inviteErr
-  } catch {
-    // Service role key not configured or user already exists — fall through
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const sb = createServiceClient()
+      const { error: inviteErr } = await sb.auth.admin.inviteUserByEmail(email, {
+        redirectTo: inviteUrl,
+      })
+      emailSent = !inviteErr
+    } catch {
+      // Swallow — service key present but invite failed (e.g. user already exists)
+    }
   }
 
   return NextResponse.json({ token: invite.token, inviteUrl, emailSent })

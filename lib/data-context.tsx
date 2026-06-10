@@ -11,12 +11,17 @@ type Action =
   | { type: 'CREATE_VERZOEK'; wedstrijdId: string; door: string; aan: string; reden: string; nieuweDatum: string; nieuweTijd: string }
   | { type: 'ACCEPT_VERZOEK'; wedstrijdId: string }
   | { type: 'AFWIJS_VERZOEK'; wedstrijdId: string }
-  | { type: 'UPDATE_BESCHIKBAARHEID'; teamId: string; avond: Dag; start: string; blokkades: Blokkade[] }
+  | { type: 'UPDATE_BESCHIKBAARHEID'; teamId: string; avond: Dag; start: string; blokkades: Blokkade[]; trainingsAvond?: string | null; trainingsTijd?: string | null }
   | { type: 'UPDATE_TEAMGEGEVENS'; teamId: string; naam: string; tel: string; mail: string; locatie_id: string }
-  | { type: 'CREATE_TEAM'; data: Omit<AppData['teams'][string], 'id' | 'hue' | 'blokkades'> }
-  | { type: 'UPDATE_TEAM'; teamId: string; data: Partial<AppData['teams'][string]>; oldPouleId: string }
+  | { type: 'CREATE_TEAM'; data: Omit<AppData['teams'][string], 'id' | 'hue' | 'blokkades' | 'trainingsAvond' | 'trainingsTijd'> & { poule_id: string | null } }
+  | { type: 'UPDATE_TEAM'; teamId: string; data: Partial<AppData['teams'][string]>; oldPouleId: string | null }
+  | { type: 'DELETE_TEAM'; teamId: string }
   | { type: 'CREATE_POULE'; competitieId: string; naam: string; niveau: string; format: 'enkel' | 'anderhalf' | 'dubbel' }
+  | { type: 'UPDATE_POULE'; pouleId: string; naam: string; niveau: string; format: 'enkel' | 'anderhalf' | 'dubbel' }
+  | { type: 'DELETE_POULE'; pouleId: string }
   | { type: 'CREATE_COMPETITIE'; data: Omit<AppData['competities'][string], 'id'> }
+  | { type: 'UPDATE_COMPETITIE'; competitieId: string; naam: string; soort: 'heren' | 'dames' | 'mix'; seizoen: string; startDatum: string; eindDatum: string }
+  | { type: 'DELETE_COMPETITIE'; competitieId: string }
   | { type: 'CREATE_LOCATIE'; data: Omit<AppData['locaties'][string], 'id'> }
   | { type: 'UPDATE_LOCATIE'; locatieId: string; data: Partial<AppData['locaties'][string]> }
   | { type: 'UPDATE_STAND'; pouleId: string; teamId: string; vals: Partial<Stand> }
@@ -77,8 +82,11 @@ async function executeAction(action: Action): Promise<void> {
       ])
       break
 
-    case 'UPDATE_BESCHIKBAARHEID':
-      await sb.from('teams').update({ avond: action.avond, start_tijd: action.start }).eq('id', action.teamId)
+    case 'UPDATE_BESCHIKBAARHEID': {
+      const upd: Record<string, unknown> = { avond: action.avond, start_tijd: action.start }
+      if ('trainingsAvond' in action) upd.trainings_avond = action.trainingsAvond ?? null
+      if ('trainingsTijd' in action) upd.trainings_tijd = action.trainingsTijd ?? null
+      await sb.from('teams').update(upd).eq('id', action.teamId)
       await sb.from('blokkades').delete().eq('team_id', action.teamId)
       if (action.blokkades.length > 0) {
         await sb.from('blokkades').insert(
@@ -86,6 +94,7 @@ async function executeAction(action: Action): Promise<void> {
         )
       }
       break
+    }
 
     case 'UPDATE_TEAMGEGEVENS':
       await sb.from('teams').update({
@@ -99,22 +108,17 @@ async function executeAction(action: Action): Promise<void> {
     case 'CREATE_TEAM': {
       const id = 'team' + Date.now()
       const d = action.data
-      await sb.from('teams').insert({
-        id,
-        naam: d.naam,
-        kort: d.kort,
-        plaats: d.plaats,
-        adres: d.adres || '',
-        hue: Math.floor(Math.random() * 360),
-        poule_id: d.poule_id,
-        locatie_id: d.locatie_id,
-        avond: d.avond,
-        start_tijd: d.start,
-        aanvoerder_naam: d.aanvoerder.naam,
-        aanvoerder_tel: d.aanvoerder.tel,
-        aanvoerder_mail: d.aanvoerder.mail,
-      })
-      await sb.from('standen').insert({ team_id: id, poule_id: d.poule_id, g: 0, w: 0, v: 0, sv: 0, st: 0, pnt: 0 })
+      const teamRow: Record<string, unknown> = {
+        id, naam: d.naam, kort: d.kort, plaats: d.plaats, adres: d.adres || '',
+        hue: Math.floor(Math.random() * 360), locatie_id: d.locatie_id,
+        avond: d.avond, start_tijd: d.start,
+        aanvoerder_naam: d.aanvoerder.naam, aanvoerder_tel: d.aanvoerder.tel, aanvoerder_mail: d.aanvoerder.mail,
+      }
+      if (d.poule_id) teamRow.poule_id = d.poule_id
+      await sb.from('teams').insert(teamRow)
+      if (d.poule_id) {
+        await sb.from('standen').insert({ team_id: id, poule_id: d.poule_id, g: 0, w: 0, v: 0, sv: 0, st: 0, pnt: 0 })
+      }
       break
     }
 
@@ -125,7 +129,7 @@ async function executeAction(action: Action): Promise<void> {
       if (d.kort !== undefined) upd.kort = d.kort
       if (d.plaats !== undefined) upd.plaats = d.plaats
       if (d.adres !== undefined) upd.adres = d.adres
-      if (d.poule_id !== undefined) upd.poule_id = d.poule_id
+      if ('poule_id' in d) upd.poule_id = d.poule_id ?? null
       if (d.locatie_id !== undefined) upd.locatie_id = d.locatie_id
       if (d.avond !== undefined) upd.avond = d.avond
       if (d.start !== undefined) upd.start_tijd = d.start
@@ -135,39 +139,65 @@ async function executeAction(action: Action): Promise<void> {
         upd.aanvoerder_mail = d.aanvoerder.mail
       }
       await sb.from('teams').update(upd).eq('id', action.teamId)
-      if (d.poule_id && d.poule_id !== action.oldPouleId) {
-        await sb.from('standen').delete().eq('team_id', action.teamId).eq('poule_id', action.oldPouleId)
-        await sb.from('standen').insert({ team_id: action.teamId, poule_id: d.poule_id, g: 0, w: 0, v: 0, sv: 0, st: 0, pnt: 0 })
+      if (d.poule_id !== undefined && d.poule_id !== action.oldPouleId) {
+        if (action.oldPouleId) {
+          await sb.from('standen').delete().eq('team_id', action.teamId).eq('poule_id', action.oldPouleId)
+        }
+        if (d.poule_id) {
+          await sb.from('standen').insert({ team_id: action.teamId, poule_id: d.poule_id, g: 0, w: 0, v: 0, sv: 0, st: 0, pnt: 0 })
+        }
       }
+      break
+    }
+
+    case 'DELETE_TEAM': {
+      const { data: matchIds } = await sb
+        .from('wedstrijden').select('id')
+        .or(`thuis_id.eq.${action.teamId},uit_id.eq.${action.teamId}`)
+      if (matchIds?.length) {
+        await sb.from('wedstrijden').delete().in('id', matchIds.map(m => m.id))
+      }
+      await sb.from('teams').delete().eq('id', action.teamId)
       break
     }
 
     case 'CREATE_POULE': {
       const id = 'P' + Date.now().toString().slice(-4)
       await sb.from('poules').insert({
-        id,
-        naam: action.naam,
-        niveau: action.niveau || '',
-        competitie_id: action.competitieId,
-        format: action.format,
+        id, naam: action.naam, niveau: action.niveau || '',
+        competitie_id: action.competitieId, format: action.format,
       })
       break
     }
+
+    case 'UPDATE_POULE':
+      await sb.from('poules').update({ naam: action.naam, niveau: action.niveau, format: action.format }).eq('id', action.pouleId)
+      break
+
+    case 'DELETE_POULE':
+      await sb.from('poules').delete().eq('id', action.pouleId)
+      break
 
     case 'CREATE_COMPETITIE': {
       const id = 'comp' + Date.now().toString().slice(-6)
       const d = action.data
       await sb.from('competities').insert({
-        id,
-        naam: d.naam,
-        type: d.type,
-        format: d.format,
-        seizoen: d.seizoen,
-        start_datum: d.startDatum,
-        eind_datum: d.eindDatum,
+        id, naam: d.naam, type: d.type, format: d.format,
+        seizoen: d.seizoen, start_datum: d.startDatum, eind_datum: d.eindDatum,
       })
       break
     }
+
+    case 'UPDATE_COMPETITIE':
+      await sb.from('competities').update({
+        naam: action.naam, type: action.soort, seizoen: action.seizoen,
+        start_datum: action.startDatum, eind_datum: action.eindDatum,
+      }).eq('id', action.competitieId)
+      break
+
+    case 'DELETE_COMPETITIE':
+      await sb.from('competities').delete().eq('id', action.competitieId)
+      break
 
     case 'CREATE_LOCATIE': {
       const id = 'loc' + Date.now().toString().slice(-6)

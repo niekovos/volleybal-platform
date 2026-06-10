@@ -62,7 +62,7 @@ export default function MijnTeamPage() {
                 <Monogram kort={t.kort} hue={t.hue} size={38} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{t.naam}</div>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--ink-3)' }}>{data.poules[t.poule_id]?.naam} · {t.plaats}</div>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--ink-3)' }}>{t.poule_id ? data.poules[t.poule_id]?.naam : ''} · {t.plaats}</div>
                 </div>
                 <Icon name="plus" size={20} color="var(--primary)" />
               </div>
@@ -96,9 +96,9 @@ export default function MijnTeamPage() {
   const t = data.teams[fav]
   if (!t) return null
   const l = data.locaties[t.locatie_id]
-  const poule = data.poules[t.poule_id]
-  const rij = (data.standen[t.poule_id] || []).find(r => r.team_id === fav)
-  const pos = standPositie(fav, t.poule_id)
+  const poule = t.poule_id ? data.poules[t.poule_id] : null
+  const rij = t.poule_id ? (data.standen[t.poule_id] || []).find((r: { team_id: string }) => r.team_id === fav) : null
+  const pos = t.poule_id ? standPositie(fav, t.poule_id) : 0
   const wedstrijden = wedstrijdenVan(fav)
   const komend = wedstrijden.filter(w => w.status !== 'gespeeld')
 
