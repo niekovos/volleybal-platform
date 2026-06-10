@@ -45,19 +45,16 @@ export default function CompetitiesPage() {
   // Competitie modal state
   const [cNaam, setCNaam] = useState('')
   const [cType, setCType] = useState<'heren'|'dames'|'mix'>('mix')
-  const [cFormat, setCFormat] = useState<'enkel'|'anderhalf'|'dubbel'>('enkel')
   const [cSeizoen, setCSeizoen] = useState('2025–2026')
   const [cStart, setCStart] = useState('2025-09-01')
   const [cEind, setCEind] = useState('2026-06-30')
-  const resetComp = () => { setCNaam(''); setCType('mix'); setCFormat('enkel'); setCSeizoen('2025–2026'); setCStart('2025-09-01'); setCEind('2026-06-30') }
+  const resetComp = () => { setCNaam(''); setCType('mix'); setCSeizoen('2025–2026'); setCStart('2025-09-01'); setCEind('2026-06-30') }
 
   // Poule modal state
   const [pNaam, setPNaam] = useState('')
   const [pNiveau, setPNiveau] = useState('')
   const [pFormat, setPFormat] = useState<'enkel'|'anderhalf'|'dubbel'>('enkel')
-  const resetPoule = (defaultFormat: 'enkel'|'anderhalf'|'dubbel' = 'enkel') => {
-    setPNaam(''); setPNiveau(''); setPFormat(defaultFormat)
-  }
+  const resetPoule = () => { setPNaam(''); setPNiveau(''); setPFormat('enkel') }
 
   // Team modal state
   const [tNaam, setTNaam] = useState(''); const [tKort, setTKort] = useState(''); const [tPlaats, setTPlaats] = useState('')
@@ -173,7 +170,7 @@ export default function CompetitiesPage() {
                   <div style={{ paddingLeft: 12, marginTop: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                       <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--ink-3)' }}>Poules</span>
-                      <button onClick={() => { resetPoule(c.format); setPouleModal({ compId: c.id }) }} style={{ border: 'none', background: 'var(--primary-soft)', width: 24, height: 24, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button onClick={() => { resetPoule(); setPouleModal({ compId: c.id }) }} style={{ border: 'none', background: 'var(--primary-soft)', width: 24, height: 24, borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Icon name="plus" size={14} color="var(--primary)" />
                       </button>
                     </div>
@@ -287,13 +284,10 @@ export default function CompetitiesPage() {
 
       {/* Competitie modal */}
       <Modal open={compModal} onClose={() => setCompModal(false)} title="Nieuwe competitie" width={500}
-        footer={<><Button variant="ghost" onClick={() => setCompModal(false)}>Annuleren</Button><Button icon="check" disabled={!cNaam.trim()} onClick={() => { dispatch({ type: 'CREATE_COMPETITIE', data: { naam: cNaam, type: cType, format: cFormat, seizoen: cSeizoen, startDatum: cStart, eindDatum: cEind } }); setCompModal(false) }}>Aanmaken</Button></>}>
+        footer={<><Button variant="ghost" onClick={() => setCompModal(false)}>Annuleren</Button><Button icon="check" disabled={!cNaam.trim()} onClick={() => { dispatch({ type: 'CREATE_COMPETITIE', data: { naam: cNaam, type: cType, format: 'enkel', seizoen: cSeizoen, startDatum: cStart, eindDatum: cEind } }); setCompModal(false) }}>Aanmaken</Button></>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Field label="Naam"><Input value={cNaam} onChange={e => setCNaam(e.target.value)} placeholder="Bijv. Heren Competitie" /></Field>
           <Field label="Type"><div style={{ display: 'flex', gap: 8 }}>{(['heren','dames','mix'] as const).map(k => <Pill key={k} active={cType===k} onClick={() => setCType(k)}>{COMP_TYPES[k]}</Pill>)}</div></Field>
-          <Field label="Standaard format" hint="Wordt als standaard ingevuld bij nieuwe poules in deze competitie.">
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{(['enkel','anderhalf','dubbel'] as const).map(k => <Pill key={k} active={cFormat===k} onClick={() => setCFormat(k)}>{COMP_FORMATS[k]}</Pill>)}</div>
-          </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Field label="Begindatum"><Input type="date" value={cStart} onChange={e => setCStart(e.target.value)} /></Field>
             <Field label="Einddatum"><Input type="date" value={cEind} onChange={e => setCEind(e.target.value)} /></Field>
@@ -308,7 +302,7 @@ export default function CompetitiesPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Field label="Naam"><Input value={pNaam} onChange={e => setPNaam(e.target.value)} placeholder="Bijv. Dames 1e klasse" /></Field>
           <Field label="Niveau / omschrijving"><Input value={pNiveau} onChange={e => setPNiveau(e.target.value)} placeholder="1e klasse" /></Field>
-          <Field label="Format" hint="Enkel: 2× per koppel (1 thuis + 1 uit) · Anderhalf: 3× · Dubbel: 4×">
+          <Field label="Soort competitie" hint="Enkel: 2× per koppel (1 thuis + 1 uit) · Anderhalf: 3× · Dubbel: 4×">
             <div style={{ display: 'flex', gap: 8 }}>
               {(['enkel','anderhalf','dubbel'] as const).map(k => (
                 <Pill key={k} active={pFormat===k} onClick={() => setPFormat(k)}>{COMP_FORMATS[k]}</Pill>
