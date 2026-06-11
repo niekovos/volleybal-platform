@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { MobileHeader } from '@/components/ui/MobileHeader'
 import { SectionTitle } from '@/components/ui/SectionTitle'
 import { List } from '@/components/ui/List'
@@ -18,6 +19,7 @@ export default function AanvoerderProgrammaPage() {
   const [selectedWId, setSelectedWId] = useState<string | undefined>()
   const [toast, setToast] = useState<string | null>(null)
 
+  const router = useRouter()
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2600) }
   const mijn = wedstrijdenVan(teamId)
   const komend = mijn.filter(w => w.status !== 'gespeeld')
@@ -47,7 +49,7 @@ export default function AanvoerderProgrammaPage() {
         <div>
           <SectionTitle>Komende wedstrijden</SectionTitle>
           {komend.length > 0 ? (
-            <List>{komend.map(w => <WedstrijdRij key={w.id} wedstrijd={w} teams={data.teams} locaties={data.locaties} highlightTeam={teamId} />)}</List>
+            <List>{komend.map(w => <WedstrijdRij key={w.id} wedstrijd={w} teams={data.teams} locaties={data.locaties} highlightTeam={teamId} onClick={() => router.push(`/programma/${w.id}`)} />)}</List>
           ) : (
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--ink-3)', padding: '8px 0' }}>Geen geplande wedstrijden.</div>
           )}
@@ -57,7 +59,7 @@ export default function AanvoerderProgrammaPage() {
           <List>
             {gespeeld.map(w => (
               <div key={w.id}>
-                <WedstrijdRij wedstrijd={w} teams={data.teams} locaties={data.locaties} highlightTeam={teamId} />
+                <WedstrijdRij wedstrijd={w} teams={data.teams} locaties={data.locaties} highlightTeam={teamId} onClick={() => router.push(`/programma/${w.id}`)} />
                 {!w.uitslag && (
                   <div style={{ padding: '0 16px 14px' }}>
                     <Button full size="sm" icon="vink" onClick={() => { setSelectedWId(w.id); setUitslagOpen(true) }}>Uitslag doorgeven</Button>

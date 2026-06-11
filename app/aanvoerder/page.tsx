@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { SectionTitle } from '@/components/ui/SectionTitle'
@@ -20,6 +21,7 @@ type Sheet = 'uitslag' | 'verplaats' | 'beschikbaar' | 'contact' | null
 type ToastMsg = string | null
 
 export default function AanvoerderPage() {
+  const router = useRouter()
   const { data, dispatch, profile, wedstrijdenVan, inkomendVerzoeken, standPositie } = useData()
   const teamId = profile?.teamId ?? ''
   const t = data.teams[teamId]
@@ -178,7 +180,7 @@ export default function AanvoerderPage() {
           <div>
             <SectionTitle>Volgende wedstrijd</SectionTitle>
             <Card pad={0}>
-              <WedstrijdRij wedstrijd={komend[0]} teams={data.teams} locaties={data.locaties} highlightTeam={teamId} />
+              <WedstrijdRij wedstrijd={komend[0]} teams={data.teams} locaties={data.locaties} highlightTeam={teamId} onClick={() => router.push(`/programma/${komend[0].id}`)} />
             </Card>
           </div>
         )}
