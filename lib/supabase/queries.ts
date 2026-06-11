@@ -43,7 +43,7 @@ export async function fetchAppData(): Promise<AppData> {
     sb.from('blokkades').select('*'),
     sb.from('wedstrijden').select('*').order('datum').order('tijd'),
     sb.from('verplaatsverzoeken').select('*').eq('status', 'open'),
-    sb.from('standen').select('*'),
+    sb.from('standen_berekend').select('*'),
   ])
 
   const locaties: AppData['locaties'] = {}

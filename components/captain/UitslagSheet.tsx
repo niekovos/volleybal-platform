@@ -36,7 +36,10 @@ function defaultScore(maxSets: number): [number, number] {
 }
 
 export function UitslagSheet({ open, onClose, wedstrijden, teams, poules, teamId, defaultWedstrijdId, onSubmit }: UitslagSheetProps) {
-  const kandidaten = wedstrijden.filter(w => w.status === 'gespeeld' || w.status === 'gepland')
+  const today = new Date().toISOString().split('T')[0]
+  const kandidaten = wedstrijden.filter(w =>
+    (w.status === 'gespeeld' || w.status === 'gepland') && w.datum <= today
+  )
   const [sel, setSel] = useState(defaultWedstrijdId || kandidaten[0]?.id || '')
   const [a, setA] = useState(3)
   const [b, setB] = useState(1)
