@@ -60,3 +60,10 @@ export function suggestiesVoor(
 export function monogramKleur(hue: number): string {
   return `oklch(0.62 0.13 ${hue})`
 }
+
+export function isGeldig(a: number, b: number, maxSets: number): boolean {
+  if (a === b || a < 0 || b < 0) return false
+  const total = a + b
+  if (maxSets % 2 === 1) return total === maxSets
+  return total === maxSets || (total === maxSets + 1 && Math.min(a, b) === maxSets / 2)
+}

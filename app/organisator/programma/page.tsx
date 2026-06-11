@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { useData } from '@/lib/data-context'
-import { fmtDag } from '@/lib/utils'
+import { fmtDag, isGeldig } from '@/lib/utils'
 import type { Wedstrijd } from '@/lib/types'
 
 function OrgTopbar({ title, sub }: { title: string; sub?: string }) {
@@ -39,12 +39,14 @@ export default function OrgProgrammaPage() {
     setScoreModal(w)
   }
 
+  const scoreMaxSets = scoreModal ? (data.poules[scoreModal.poule_id]?.maxSets ?? 4) : 4
+  const scoreT = parseInt(sThuis)
+  const scoreU = parseInt(sUit)
+  const scoreGeldig = !isNaN(scoreT) && !isNaN(scoreU) && isGeldig(scoreT, scoreU, scoreMaxSets)
+
   const saveScore = () => {
-    if (!scoreModal) return
-    const t = parseInt(sThuis)
-    const u = parseInt(sUit)
-    if (isNaN(t) || isNaN(u)) return
-    dispatch({ type: 'SET_UITSLAG', wedstrijdId: scoreModal.id, uitslag: [t, u] })
+    if (!scoreModal || !scoreGeldig) return
+    dispatch({ type: 'SET_UITSLAG', wedstrijdId: scoreModal.id, uitslag: [scoreT, scoreU] })
     setScoreModal(null)
   }
 
@@ -110,7 +112,7 @@ export default function OrgProgrammaPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setScoreModal(null)}>Annuleren</Button>
-            <Button icon="check" disabled={sThuis === '' || sUit === ''} onClick={saveScore}>Opslaan</Button>
+            <Button icon="check" disabled={!scoreGeldig} onClick={saveScore}>Opslaan</Button>
           </>
         }
       >
@@ -132,14 +134,19 @@ export default function OrgProgrammaPage() {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'center' }}>
-              <Field label="Thuis punten">
-                <Input type="number" min={0} value={sThuis} onChange={e => setSThuis(e.target.value)} placeholder="0" style={{ textAlign: 'center', fontSize: 22, fontWeight: 800 }} />
+              <Field label="Thuis sets">
+                <Input type="number" min={0} max={scoreMaxSets} value={sThuis} onChange={e => setSThuis(e.target.value)} placeholder="0" style={{ textAlign: 'center', fontSize: 22, fontWeight: 800 }} />
               </Field>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: 'var(--ink-3)', paddingTop: 22, textAlign: 'center' }}>–</div>
-              <Field label="Uit punten">
-                <Input type="number" min={0} value={sUit} onChange={e => setSUit(e.target.value)} placeholder="0" style={{ textAlign: 'center', fontSize: 22, fontWeight: 800 }} />
+              <Field label="Uit sets">
+                <Input type="number" min={0} max={scoreMaxSets} value={sUit} onChange={e => setSUit(e.target.value)} placeholder="0" style={{ textAlign: 'center', fontSize: 22, fontWeight: 800 }} />
               </Field>
             </div>
+            {sThuis !== '' && sUit !== '' && !scoreGeldig && (
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--warn-ink)', textAlign: 'center' }}>
+                Ongeldige uitstand voor {scoreMaxSets} sets.
+              </div>
+            )}
           </div>
         )}
       </Modal>

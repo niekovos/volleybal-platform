@@ -6,7 +6,7 @@ import { Field, Select } from '@/components/ui/Field'
 import { Monogram } from '@/components/ui/Monogram'
 import { Stepper } from '@/components/ui/Stepper'
 import type { AppData, Wedstrijd } from '@/lib/types'
-import { fmtDag } from '@/lib/utils'
+import { fmtDag, isGeldig } from '@/lib/utils'
 
 interface UitslagSheetProps {
   open: boolean
@@ -17,17 +17,6 @@ interface UitslagSheetProps {
   teamId: string
   defaultWedstrijdId?: string
   onSubmit: (wedstrijdId: string, uitslag: [number, number]) => void
-}
-
-function isGeldig(a: number, b: number, maxSets: number): boolean {
-  if (a === b) return false
-  const total = a + b
-  if (maxSets % 2 === 1) {
-    // odd: play all N sets, no tiebreak possible
-    return total === maxSets
-  }
-  // even: play all N sets; if tied (N/2 each), play one extra tiebreak set
-  return (total === maxSets) || (total === maxSets + 1 && Math.min(a, b) === maxSets / 2)
 }
 
 function defaultScore(maxSets: number): [number, number] {
