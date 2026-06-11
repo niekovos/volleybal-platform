@@ -4,10 +4,16 @@ import type { AppData, CurrentProfile, Stand, Wedstrijd, Blokkade, SpeelavondEnt
 import { fetchAppData, fetchCurrentProfile } from './supabase/queries'
 import { createClient } from './supabase/client'
 
-const EMPTY: AppData = { locaties: {}, competities: {}, poules: {}, teams: {}, wedstrijden: [], standen: {} }
+const EMPTY: AppData = { locaties: {}, competities: {}, poules: {}, teams: {}, wedstrijden: [], standen: {}, uitslag_verzoeken: [] }
 
 type Action =
   | { type: 'SET_UITSLAG'; wedstrijdId: string; uitslag: [number, number] }
+  | { type: 'SLUIT_ESCALATIE'; wedstrijdId: string; uitslag: [number, number] }
+  | { type: 'STEL_UITSLAG_VOOR'; wedstrijdId: string; uitslag: [number, number]; doorTeamId: string }
+  | { type: 'KEUR_UITSLAG_GOED'; verzoekId: string }
+  | { type: 'CORRIGEER_UITSLAG'; verzoekId: string; uitslag: [number, number]; doorTeamId: string }
+  | { type: 'WIJS_UITSLAG_AF'; verzoekId: string }
+  | { type: 'STEL_TEGENBOD_VOOR'; verzoekId: string; doorTeamId: string; reden: string; datum: string; tijd: string }
   | { type: 'CREATE_VERZOEK'; wedstrijdId: string; door: string; aan: string; reden: string; nieuweDatum: string; nieuweTijd: string }
   | { type: 'ACCEPT_VERZOEK'; wedstrijdId: string }
   | { type: 'AFWIJS_VERZOEK'; wedstrijdId: string }
@@ -38,6 +44,102 @@ async function executeAction(action: Action): Promise<void> {
       }).eq('id', action.wedstrijdId)
       break
 
+    case 'SLUIT_ESCALATIE':
+      await Promise.all([
+        sb.from('wedstrijden').update({
+          status: 'gespeeld',
+          uitslag_thuis: action.uitslag[0],
+          uitslag_uit: action.uitslag[1],
+        }).eq('id', action.wedstrijdId),
+        sb.from('uitslag_verzoeken').update({ status: 'goedgekeurd' })
+          .eq('wedstrijd_id', action.wedstrijdId)
+          .in('status', ['open', 'geescaleerd']),
+      ])
+      break
+
+    case 'STEL_UITSLAG_VOOR': {
+      const { data: w } = await sb.from('wedstrijden').select('thuis_id, uit_id').eq('id', action.wedstrijdId).single()
+      if (!w) break
+      const teBevestigenDoor = w.thuis_id === action.doorTeamId ? w.uit_id : w.thuis_id
+      await sb.from('uitslag_verzoeken').insert({
+        wedstrijd_id: action.wedstrijdId,
+        ingediend_door: action.doorTeamId,
+        te_bevestigen_door: teBevestigenDoor,
+        uitslag_thuis: action.uitslag[0],
+        uitslag_uit: action.uitslag[1],
+      })
+      try {
+        await fetch('/api/mail', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'uitslag_voorstel', wedstrijdId: action.wedstrijdId, doorTeamId: action.doorTeamId }) })
+      } catch { /* email is best-effort */ }
+      break
+    }
+
+    case 'KEUR_UITSLAG_GOED': {
+      const { data: vz } = await sb.from('uitslag_verzoeken').select('*').eq('id', action.verzoekId).single()
+      if (!vz) break
+      await Promise.all([
+        sb.from('uitslag_verzoeken').update({ status: 'goedgekeurd' }).eq('id', action.verzoekId),
+        sb.from('wedstrijden').update({
+          status: 'gespeeld',
+          uitslag_thuis: vz.uitslag_thuis,
+          uitslag_uit: vz.uitslag_uit,
+        }).eq('id', vz.wedstrijd_id),
+      ])
+      try {
+        await fetch('/api/mail', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'uitslag_goedgekeurd', wedstrijdId: vz.wedstrijd_id, doorTeamId: vz.te_bevestigen_door }) })
+      } catch { /* email is best-effort */ }
+      break
+    }
+
+    case 'CORRIGEER_UITSLAG': {
+      const { data: oudVz } = await sb.from('uitslag_verzoeken').select('*').eq('id', action.verzoekId).single()
+      if (!oudVz) break
+      await sb.from('uitslag_verzoeken').update({ status: 'gecorrigeerd' }).eq('id', action.verzoekId)
+      await sb.from('uitslag_verzoeken').insert({
+        wedstrijd_id: oudVz.wedstrijd_id,
+        ingediend_door: action.doorTeamId,
+        te_bevestigen_door: oudVz.ingediend_door,
+        uitslag_thuis: action.uitslag[0],
+        uitslag_uit: action.uitslag[1],
+      })
+      try {
+        await fetch('/api/mail', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'uitslag_gecorrigeerd', wedstrijdId: oudVz.wedstrijd_id, doorTeamId: action.doorTeamId }) })
+      } catch { /* email is best-effort */ }
+      break
+    }
+
+    case 'WIJS_UITSLAG_AF': {
+      await sb.from('uitslag_verzoeken').update({ status: 'geescaleerd' }).eq('id', action.verzoekId)
+      try {
+        await fetch('/api/mail', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'uitslag_geescaleerd', verzoekId: action.verzoekId }) })
+      } catch { /* email is best-effort */ }
+      break
+    }
+
+    case 'STEL_TEGENBOD_VOOR': {
+      const { data: oudVz } = await sb.from('verplaatsverzoeken').select('*').eq('id', action.verzoekId).single()
+      if (!oudVz) break
+      await sb.from('verplaatsverzoeken').update({ status: 'beantwoord' }).eq('id', action.verzoekId)
+      await sb.from('verplaatsverzoeken').insert({
+        wedstrijd_id: oudVz.wedstrijd_id,
+        door_team_id: action.doorTeamId,
+        aan_team_id: oudVz.door_team_id,
+        reden: action.reden,
+        nieuwe_datum: action.datum,
+        nieuwe_tijd: action.tijd,
+        parent_id: action.verzoekId,
+      })
+      try {
+        await fetch('/api/mail', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'verplaats_tegenbod', wedstrijdId: oudVz.wedstrijd_id, doorTeamId: action.doorTeamId }) })
+      } catch { /* email is best-effort */ }
+      break
+    }
+
     case 'CREATE_VERZOEK':
       await Promise.all([
         sb.from('wedstrijden').update({ status: 'verzoek' }).eq('id', action.wedstrijdId),
@@ -50,12 +152,16 @@ async function executeAction(action: Action): Promise<void> {
           nieuwe_tijd: action.nieuweTijd,
         }),
       ])
+      try {
+        await fetch('/api/mail', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'verplaats_nieuw', wedstrijdId: action.wedstrijdId, doorTeamId: action.door }) })
+      } catch { /* email is best-effort */ }
       break
 
     case 'ACCEPT_VERZOEK': {
       const { data: vrz } = await sb
         .from('verplaatsverzoeken')
-        .select('id, nieuwe_datum, nieuwe_tijd')
+        .select('id, nieuwe_datum, nieuwe_tijd, door_team_id')
         .eq('wedstrijd_id', action.wedstrijdId)
         .eq('status', 'open')
         .limit(1)
@@ -68,6 +174,10 @@ async function executeAction(action: Action): Promise<void> {
           }).eq('id', action.wedstrijdId),
           sb.from('verplaatsverzoeken').update({ status: 'goedgekeurd' }).eq('id', vrz[0].id),
         ])
+        try {
+          await fetch('/api/mail', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'verplaats_goedgekeurd', wedstrijdId: action.wedstrijdId, doorTeamId: vrz[0].door_team_id }) })
+        } catch { /* email is best-effort */ }
       }
       break
     }

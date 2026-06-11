@@ -1,11 +1,18 @@
 'use client'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { SectionTitle } from '@/components/ui/SectionTitle'
 import { List } from '@/components/ui/List'
 import { WedstrijdRij } from '@/components/ui/WedstrijdRij'
 import { Icon } from '@/components/ui/Icon'
+import { Monogram } from '@/components/ui/Monogram'
+import { Button } from '@/components/ui/Button'
+import { Field, Input } from '@/components/ui/Field'
+import { Modal } from '@/components/ui/Modal'
 import { useData } from '@/lib/data-context'
+import { fmtDag, isGeldig } from '@/lib/utils'
+import type { UitslagVerzoek } from '@/lib/types'
 
 function OrgTopbar({ title, sub }: { title: string; sub?: string }) {
   return (
@@ -19,7 +26,7 @@ function OrgTopbar({ title, sub }: { title: string; sub?: string }) {
 }
 
 export default function OrganizerDashboard() {
-  const { data } = useData()
+  const { data, dispatch } = useData()
 
   const teams = Object.keys(data.teams).length
   const competities = Object.keys(data.competities).length
@@ -27,6 +34,32 @@ export default function OrganizerDashboard() {
   const gespeeld = data.wedstrijden.filter(w => w.status === 'gespeeld' && w.uitslag).length
   const teVullen = data.wedstrijden.filter(w => w.status === 'gespeeld' && !w.uitslag)
   const recent = data.wedstrijden.filter(w => w.status === 'gespeeld' && w.uitslag).slice(-4).reverse()
+
+  // Escalated uitslag verzoeken
+  const geescaleerd = data.uitslag_verzoeken.filter(v => v.status === 'geescaleerd')
+
+  // Score modal for escalated scores
+  const [escModal, setEscModal] = useState<UitslagVerzoek | null>(null)
+  const [sThuis, setSThuis] = useState('')
+  const [sUit, setSUit] = useState('')
+
+  const openEscalatie = (vz: UitslagVerzoek) => {
+    setSThuis('')
+    setSUit('')
+    setEscModal(vz)
+  }
+
+  const escWedstrijd = escModal ? data.wedstrijden.find(w => w.id === escModal.wedstrijd_id) : null
+  const escMaxSets = escWedstrijd ? (data.poules[escWedstrijd.poule_id]?.maxSets ?? 4) : 4
+  const escT = parseInt(sThuis)
+  const escU = parseInt(sUit)
+  const escGeldig = !isNaN(escT) && !isNaN(escU) && isGeldig(escT, escU, escMaxSets)
+
+  const saveEscalatie = () => {
+    if (!escModal || !escGeldig) return
+    dispatch({ type: 'SLUIT_ESCALATIE', wedstrijdId: escModal.wedstrijd_id, uitslag: [escT, escU] })
+    setEscModal(null)
+  }
 
   const kpi = (label: string, val: number, icon: string, color: string) => (
     <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', padding: 18 }}>
@@ -50,6 +83,47 @@ export default function OrganizerDashboard() {
           {kpi('Gespeeld', gespeeld, 'vink', 'var(--positive)')}
           {kpi('Locaties', locaties, 'pin', 'oklch(0.6 0.12 45)')}
         </div>
+
+        {/* Geëscaleerde uitslagen — ingrijpen nodig */}
+        {geescaleerd.length > 0 && (
+          <div style={{ background: 'var(--warn-soft)', border: '2px solid var(--warn)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--warn)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name="vink" size={18} color="#fff" />
+              </div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, color: 'var(--warn-ink)' }}>
+                Uitslagen geëscaleerd — ingrijpen vereist
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {geescaleerd.map(vz => {
+                const w = data.wedstrijden.find(x => x.id === vz.wedstrijd_id)
+                const th = w ? data.teams[w.thuis_id] : null
+                const ui = w ? data.teams[w.uit_id] : null
+                const indiener = data.teams[vz.ingediend_door]
+                return (
+                  <div key={vz.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink-3)', marginBottom: 6 }}>
+                        {w ? fmtDag(w.datum) : '—'} · ingediend door {indiener?.naam}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {th && <><Monogram kort={th.kort} hue={th.hue} size={26} /><span style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>{th.naam}</span></>}
+                        <span style={{ fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 800, color: 'var(--warn-ink)', margin: '0 8px' }}>
+                          {vz.uitslag_thuis}–{vz.uitslag_uit}
+                        </span>
+                        {ui && <><Monogram kort={ui.kort} hue={ui.hue} size={26} /><span style={{ fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>{ui.naam}</span></>}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="soft" onClick={() => openEscalatie(vz)}>
+                      Definitieve uitslag invoeren
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
@@ -80,6 +154,43 @@ export default function OrganizerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Escalatie modal */}
+      {escModal && escWedstrijd && (
+        <Modal
+          open
+          onClose={() => setEscModal(null)}
+          title="Definitieve uitslag invoeren"
+          footer={
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="ghost" onClick={() => setEscModal(null)}>Annuleren</Button>
+              <Button disabled={!escGeldig} onClick={saveEscalatie}>Opslaan</Button>
+            </div>
+          }
+        >
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-3)', marginBottom: 8 }}>
+              {fmtDag(escWedstrijd.datum)} · {data.teams[escWedstrijd.thuis_id]?.naam} vs {data.teams[escWedstrijd.uit_id]?.naam}
+            </div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--warn-ink)', marginBottom: 12 }}>
+              Ingediend: <strong>{escModal.uitslag_thuis}–{escModal.uitslag_uit}</strong>. De teams zijn het niet eens. Voer de definitieve uitslag in.
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Field label={`Sets ${data.teams[escWedstrijd.thuis_id]?.naam ?? 'Thuis'}`}>
+              <Input type="number" min={0} max={escMaxSets} value={sThuis} onChange={e => setSThuis(e.target.value)} placeholder="0" />
+            </Field>
+            <Field label={`Sets ${data.teams[escWedstrijd.uit_id]?.naam ?? 'Uit'}`}>
+              <Input type="number" min={0} max={escMaxSets} value={sUit} onChange={e => setSUit(e.target.value)} placeholder="0" />
+            </Field>
+          </div>
+          {sThuis && sUit && !escGeldig && (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--warn-ink)', marginTop: 10 }}>
+              Ongeldige uitstand voor {escMaxSets} sets.
+            </div>
+          )}
+        </Modal>
+      )}
     </>
   )
 }

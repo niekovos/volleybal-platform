@@ -88,6 +88,7 @@ export type Competitie = {
 export type WedstrijdStatus = 'gepland' | 'gespeeld' | 'verzoek'
 
 export type Verplaatsverzoek = {
+  id: string
   door: string
   aan: string
   reden: string
@@ -119,6 +120,19 @@ export type Stand = {
   pnt: number
 }
 
+export type UitslagVerzoekStatus = 'open' | 'goedgekeurd' | 'gecorrigeerd' | 'geescaleerd'
+
+export type UitslagVerzoek = {
+  id: string
+  wedstrijd_id: string
+  ingediend_door: string
+  te_bevestigen_door: string
+  uitslag_thuis: number
+  uitslag_uit: number
+  status: UitslagVerzoekStatus
+  created_at: string
+}
+
 export type AppData = {
   locaties: Record<string, Locatie>
   teams: Record<string, Team>
@@ -126,6 +140,7 @@ export type AppData = {
   competities: Record<string, Competitie>
   standen: Record<string, Stand[]>
   wedstrijden: Wedstrijd[]
+  uitslag_verzoeken: UitslagVerzoek[]
 }
 
 export type DemoRol = 'speler' | 'aanvoerder' | 'organisator'

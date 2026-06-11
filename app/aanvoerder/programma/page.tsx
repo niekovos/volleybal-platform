@@ -26,9 +26,9 @@ export default function AanvoerderProgrammaPage() {
   const gespeeld = mijn.filter(w => w.status === 'gespeeld')
 
   const handleUitslag = (wedstrijdId: string, uitslag: [number, number]) => {
-    dispatch({ type: 'SET_UITSLAG', wedstrijdId, uitslag })
+    dispatch({ type: 'STEL_UITSLAG_VOOR', wedstrijdId, uitslag, doorTeamId: teamId })
     setUitslagOpen(false)
-    flash('Uitslag doorgegeven')
+    flash('Uitslag ingediend — tegenstander ontvangt een bevestigingsverzoek')
   }
   const handleVerplaats = (wedstrijdId: string, reden: string, datum: string, tijd: string) => {
     const w = data.wedstrijden.find(x => x.id === wedstrijdId)

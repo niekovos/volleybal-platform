@@ -1,4 +1,4 @@
-import type { AppData, CurrentProfile, Dag, WedstrijdStatus } from '../types'
+import type { AppData, CurrentProfile, Dag, UitslagVerzoek, WedstrijdStatus } from '../types'
 import { createClient } from './client'
 
 function tid(s: string): string {
@@ -35,6 +35,7 @@ export async function fetchAppData(): Promise<AppData> {
     { data: wedRows },
     { data: vrzRows },
     { data: standRows },
+    { data: uvRows },
   ] = await Promise.all([
     sb.from('locaties').select('*'),
     sb.from('competities').select('*'),
@@ -44,6 +45,7 @@ export async function fetchAppData(): Promise<AppData> {
     sb.from('wedstrijden').select('*').order('datum').order('tijd'),
     sb.from('verplaatsverzoeken').select('*').eq('status', 'open'),
     sb.from('standen_berekend').select('*'),
+    sb.from('uitslag_verzoeken').select('*').in('status', ['open', 'geescaleerd']),
   ])
 
   const locaties: AppData['locaties'] = {}
@@ -102,7 +104,7 @@ export async function fetchAppData(): Promise<AppData> {
 
   const vrzByWedstrijd: Record<string, { id: string; door_team_id: string; aan_team_id: string; reden: string; nieuwe_datum: string; nieuwe_tijd: string }> = {}
   for (const v of vrzRows ?? []) {
-    vrzByWedstrijd[v.wedstrijd_id] = v
+    vrzByWedstrijd[v.wedstrijd_id] = { id: v.id, door_team_id: v.door_team_id, aan_team_id: v.aan_team_id, reden: v.reden, nieuwe_datum: v.nieuwe_datum, nieuwe_tijd: v.nieuwe_tijd }
   }
 
   const wedstrijden = (wedRows ?? []).map(r => {
@@ -122,6 +124,7 @@ export async function fetchAppData(): Promise<AppData> {
           : null,
       verzoek: v
         ? {
+            id: v.id,
             door: v.door_team_id,
             aan: v.aan_team_id,
             reden: v.reden,
@@ -149,5 +152,16 @@ export async function fetchAppData(): Promise<AppData> {
     standen[key].sort((a, b) => b.pnt - a.pnt || (b.sv - b.st) - (a.sv - a.st))
   }
 
-  return { locaties, competities, poules, teams, wedstrijden, standen }
+  const uitslag_verzoeken: UitslagVerzoek[] = (uvRows ?? []).map(r => ({
+    id: r.id,
+    wedstrijd_id: r.wedstrijd_id,
+    ingediend_door: r.ingediend_door,
+    te_bevestigen_door: r.te_bevestigen_door,
+    uitslag_thuis: r.uitslag_thuis,
+    uitslag_uit: r.uitslag_uit,
+    status: r.status,
+    created_at: r.created_at,
+  }))
+
+  return { locaties, competities, poules, teams, wedstrijden, standen, uitslag_verzoeken }
 }
